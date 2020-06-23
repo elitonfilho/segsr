@@ -1,0 +1,6 @@
+# General settings
+
+CROP_SIZE: 88
+UPSCALE_FACTOR: 4
+NUM_EPOCHS: 100
+BATCH_SIZE: 32
