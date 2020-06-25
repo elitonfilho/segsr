@@ -15,6 +15,7 @@ from utils import pytorch_ssim
 from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
 from models.loss_sr import GeneratorLoss
 from models.model_sr import Generator, Discriminator
+from models.model_hrnet import HRNet
 
 parser = argparse.ArgumentParser(description='Train Super Resolution Models')
 parser.add_argument('--crop_size', default=88, type=int, help='training images crop size')
