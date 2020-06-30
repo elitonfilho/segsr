@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.utils.data
 import torchvision.utils as utils
 from torch.autograd import Variable
+from torch.tensor import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import yaml
@@ -18,10 +19,10 @@ from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
 
 parser = argparse.ArgumentParser(description='Train Super Resolution Models')
-parser.add_argument('--crop_size', default=88, type=int, help='training images crop size')
+parser.add_argument('--crop_size', default=192, type=int, help='training images crop size')
 parser.add_argument('--upscale_factor', default=4, type=int, choices=[2, 4, 8],
                     help='super resolution upscale factor')
-parser.add_argument('--num_epochs', default=100, type=int, help='train epoch number')
+parser.add_argument('--num_epochs', default=1, type=int, help='train epoch number')
 
 
 if __name__ == '__main__':
@@ -34,9 +35,9 @@ if __name__ == '__main__':
     UPSCALE_FACTOR = opt.upscale_factor
     NUM_EPOCHS = opt.num_epochs
     
-    train_set = TrainDatasetFromFolder('data/...', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
-    val_set = ValDatasetFromFolder('data/...', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True)
+    train_set = TrainDatasetFromFolder('data/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
+    val_set = ValDatasetFromFolder('data/val', upscale_factor=UPSCALE_FACTOR)
+    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=10, shuffle=True)
     val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
     
     netG = Generator(UPSCALE_FACTOR)
@@ -63,17 +64,16 @@ if __name__ == '__main__':
         netG.train()
         netD.train()
         for data, target in train_bar:
-            g_update_first = True
             batch_size = data.size(0)
             running_results['batch_sizes'] += batch_size
     
             ############################
             # (1) Update D network: maximize D(x)-1-D(G(z))
             ###########################
-            real_img = Variable(target)
+            real_img = Tensor(target)
             if torch.cuda.is_available():
                 real_img = real_img.cuda()
-            z = Variable(data)
+            z = Tensor(data)
             if torch.cuda.is_available():
                 z = z.cuda()
             fake_img = netG(z)
@@ -83,20 +83,22 @@ if __name__ == '__main__':
             fake_out = netD(fake_img).mean()
             d_loss = 1 - real_out + fake_out
             d_loss.backward(retain_graph=True)
-            optimizerD.step()
     
+            optimizerD.step()
+            
             ############################
             # (2) Update G network: minimize 1-D(G(z)) + Perception Loss + Image Loss + TV Loss
             ###########################
-            netG.zero_grad()
-            g_loss = generator_criterion(fake_out, fake_img, real_img)
-            g_loss.backward()
             
-            fake_img = netG(z)
-            fake_out = netD(fake_img).mean()
-            
-            
-            optimizerG.step()
+            with torch.autograd.detect_anomaly():
+                netG.zero_grad()
+                g_loss = generator_criterion(fake_out.detach(), fake_img, real_img)
+                g_loss.backward()
+                
+                fake_img = netG(z)
+                fake_out = netD(fake_img).mean()
+                
+                optimizerG.step()
 
             # loss for current batch before optimization 
             running_results['g_loss'] += g_loss.item() * batch_size
@@ -152,8 +154,8 @@ if __name__ == '__main__':
                 index += 1
     
         # save model parameters
-        torch.save(netG.state_dict(), 'epochs/netG_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
-        torch.save(netD.state_dict(), 'epochs/netD_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
+        # torch.save(netG.state_dict(), 'epochs/netG_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
+        # torch.save(netD.state_dict(), 'epochs/netD_epoch_%d_%d.pth' % (UPSCALE_FACTOR, epoch))
         # save loss\scores\psnr\ssim
         results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
