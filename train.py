@@ -39,7 +39,7 @@ if __name__ == '__main__':
     val_set = ValDatasetFromFolder('data/val', upscale_factor=UPSCALE_FACTOR)
     train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=10, shuffle=True)
     val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
-    
+
     netG = Generator(UPSCALE_FACTOR)
     print('# generator parameters:', sum(param.numel() for param in netG.parameters()))
     netD = Discriminator()
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     
         netG.train()
         netD.train()
-        for data, target in train_bar:
+        for data, target, seg in train_bar:
             batch_size = data.size(0)
             running_results['batch_sizes'] += batch_size
     
@@ -85,20 +85,19 @@ if __name__ == '__main__':
             d_loss.backward(retain_graph=True)
     
             optimizerD.step()
-            
+
             ############################
             # (2) Update G network: minimize 1-D(G(z)) + Perception Loss + Image Loss + TV Loss
             ###########################
             
-            with torch.autograd.detect_anomaly():
-                netG.zero_grad()
-                g_loss = generator_criterion(fake_out.detach(), fake_img, real_img)
-                g_loss.backward()
-                
-                fake_img = netG(z)
-                fake_out = netD(fake_img).mean()
-                
-                optimizerG.step()
+            netG.zero_grad()
+            g_loss = generator_criterion(fake_out.detach(), fake_img, real_img)
+            g_loss.backward()
+            
+            fake_img = netG(z)
+            fake_out = netD(fake_img).mean()
+            
+            optimizerG.step()
 
             # loss for current batch before optimization 
             running_results['g_loss'] += g_loss.item() * batch_size
@@ -121,7 +120,7 @@ if __name__ == '__main__':
             val_bar = tqdm(val_loader)
             valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
             val_images = []
-            for val_lr, val_hr_restore, val_hr in val_bar:
+            for val_lr, val_hr_restore, val_hr, val_seg in val_bar:
                 batch_size = val_lr.size(0)
                 valing_results['batch_sizes'] += batch_size
                 lr = val_lr

@@ -1,5 +1,6 @@
 from os import listdir
 from os.path import join
+from pathlib import Path
 
 from PIL import Image
 from torch.utils.data.dataset import Dataset
@@ -16,7 +17,7 @@ def calculate_valid_crop_size(crop_size, upscale_factor):
 
 def train_hr_transform(crop_size):
     return Compose([
-        RandomCrop(crop_size),
+        CenterCrop(crop_size),
         ToTensor(),
     ])
 
@@ -27,6 +28,14 @@ def train_lr_transform(crop_size, upscale_factor):
         Resize(crop_size // upscale_factor, interpolation=Image.BICUBIC),
         ToTensor()
     ])
+
+def get_seg_img(pathImageHR, crop=192):
+    name = Path(pathImageHR).stem
+    pathSeg = Path(pathImageHR, '../../annotation', f'{name}.png').resolve()
+    return Compose([
+        CenterCrop(crop=crop),
+        ToTensor()
+    ])(Image.open(pathSeg))
 
 
 def display_transform():
@@ -49,7 +58,8 @@ class TrainDatasetFromFolder(Dataset):
     def __getitem__(self, index):
         hr_image = self.hr_transform(Image.open(self.image_filenames[index]))
         lr_image = self.lr_transform(hr_image)
-        return lr_image, hr_image
+        seg_image = get_seg_img(self.image_filenames[index])
+        return lr_image, hr_image, seg_img
 
     def __len__(self):
         return len(self.image_filenames)
@@ -70,7 +80,8 @@ class ValDatasetFromFolder(Dataset):
         hr_image = CenterCrop(crop_size)(hr_image)
         lr_image = lr_scale(hr_image)
         hr_restore_img = hr_scale(lr_image)
-        return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image)
+        seg_img = get_seg_img(self.image_filenames[index])
+        return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image), ToTensor()(seg_img)
 
     def __len__(self):
         return len(self.image_filenames)
