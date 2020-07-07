@@ -29,11 +29,11 @@ def train_lr_transform(crop_size, upscale_factor):
         ToTensor()
     ])
 
-def get_seg_img(pathImageHR, crop=192):
+def get_seg_img(pathImageHR):
     name = Path(pathImageHR).stem
     pathSeg = Path(pathImageHR, '../../annotation', f'{name}.png').resolve()
     return Compose([
-        CenterCrop(crop=crop),
+        CenterCrop(192),
         ToTensor()
     ])(Image.open(pathSeg))
 
@@ -46,6 +46,12 @@ def display_transform():
         ToTensor()
     ])
 
+def accuracy(preds, label):
+    valid = (label >= 0)
+    acc_sum = (valid * (preds == label)).sum()
+    valid_sum = valid.sum()
+    acc = float(acc_sum) / (valid_sum + 1e-10)
+    return acc, valid_sum
 
 class TrainDatasetFromFolder(Dataset):
     def __init__(self, dataset_dir, crop_size, upscale_factor):
@@ -59,7 +65,7 @@ class TrainDatasetFromFolder(Dataset):
         hr_image = self.hr_transform(Image.open(self.image_filenames[index]))
         lr_image = self.lr_transform(hr_image)
         seg_image = get_seg_img(self.image_filenames[index])
-        return lr_image, hr_image, seg_img
+        return lr_image, hr_image, seg_image
 
     def __len__(self):
         return len(self.image_filenames)

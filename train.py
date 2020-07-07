@@ -3,20 +3,22 @@ import os
 from math import log10
 
 import pandas as pd
+import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 import torchvision.utils as utils
 from torch.autograd import Variable
 from torch.tensor import Tensor
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 from tqdm import tqdm
 import yaml
 
 from utils import pytorch_ssim
-from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
+from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform, accuracy
 from models.loss_sr import GeneratorLoss
 from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
+from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
 
 parser = argparse.ArgumentParser(description='Train Super Resolution Models')
 parser.add_argument('--crop_size', default=192, type=int, help='training images crop size')
@@ -37,19 +39,21 @@ if __name__ == '__main__':
     
     train_set = TrainDatasetFromFolder('data/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
     val_set = ValDatasetFromFolder('data/val', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=10, shuffle=True)
+    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=5, shuffle=True)
     val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
 
     netG = Generator(UPSCALE_FACTOR)
     print('# generator parameters:', sum(param.numel() for param in netG.parameters()))
     netD = Discriminator()
     print('# discriminator parameters:', sum(param.numel() for param in netD.parameters()))
+    netSeg = SegmentationModule(net_enc=getHrnetv2(), net_dec=getC1(), crit=nn.NLLLoss(ignore_index=1))
     
     generator_criterion = GeneratorLoss()
     
     if torch.cuda.is_available():
         netG.cuda()
         netD.cuda()
+        netSeg.cuda()
         generator_criterion.cuda()
     
     optimizerG = optim.Adam(netG.parameters())
@@ -63,7 +67,8 @@ if __name__ == '__main__':
     
         netG.train()
         netD.train()
-        for data, target, seg in train_bar:
+        netSeg.eval()
+        for index, (data, target, seg) in enumerate(train_bar):
             batch_size = data.size(0)
             running_results['batch_sizes'] += batch_size
     
@@ -77,7 +82,7 @@ if __name__ == '__main__':
             if torch.cuda.is_available():
                 z = z.cuda()
             fake_img = netG(z)
-    
+            seg = seg.cuda()
             netD.zero_grad()
             real_out = netD(real_img).mean()
             fake_out = netD(fake_img).mean()
@@ -91,7 +96,15 @@ if __name__ == '__main__':
             ###########################
             
             netG.zero_grad()
-            g_loss = generator_criterion(fake_out.detach(), fake_img, real_img)
+            # if epoch < 0.8*epoch:
+            #     g_loss = generator_criterion(fake_out.detach(), fake_img, real_img)
+            # else:
+            feed = {}
+            feed['img_data'] = fake_img
+            feed['seg_label'] = seg
+            segSize = (seg.shape[0], seg.shape[1])
+            seg_pred = netSeg(feed, segSize=segSize)
+            g_loss = generator_criterion(fake_out.detach(), fake_img, real_img, seg_pred)
             g_loss.backward()
             
             fake_img = netG(z)

@@ -2,8 +2,10 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pathlib import Path
 
 # Using non-distributed form of BatchNorm2d
+BN_MOMENTUM = 0.1
 BatchNorm2d = nn.BatchNorm2d
 logger = logging.getLogger(__name__)
 
@@ -500,12 +502,12 @@ class SegmentationModule(SegmentationModuleBase):
             pred = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True), segSize=segSize)
             return pred
 
-def hrnetv2():
+def getHrnetv2():
     model = HRNetV2(n_class=1000)
-    model.load_state_dict(torch.load('./path_encoder'))
+    model.load_state_dict(torch.load('C:\\Users\\Eliton\\Documents\\master\\segsr\\data\\encoder.pth'), strict=False)
     return model
 
-def C1():
-    model = C1()
-    model.load_state_dict(torch.load('./path_decoder'))
+def getC1():
+    model = C1(fc_dim=720, num_class=4)
+    model.load_state_dict(torch.load('C:\\Users\\Eliton\\Documents\\master\\segsr\\data\\decoder.pth'), strict=False)
     return model
