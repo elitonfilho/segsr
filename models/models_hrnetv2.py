@@ -450,7 +450,7 @@ class C1(nn.Module):
 
         if self.use_softmax: # is True during inference
             x = nn.functional.interpolate(
-                x, size=segSize, mode='bilinear', align_corners=False)
+                x, scale_factor=4, mode='bilinear', align_corners=False)
             x = nn.functional.softmax(x, dim=1)
         else:
             x = nn.functional.log_softmax(x, dim=1)
@@ -508,6 +508,6 @@ def getHrnetv2():
     return model
 
 def getC1():
-    model = C1(fc_dim=720, num_class=4)
+    model = C1(fc_dim=720, num_class=4, use_softmax=True)
     model.load_state_dict(torch.load('C:\\Users\\Eliton\\Documents\\master\\segsr\\data\\decoder.pth'), strict=False)
     return model

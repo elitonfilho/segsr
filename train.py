@@ -68,7 +68,7 @@ if __name__ == '__main__':
         netG.train()
         netD.train()
         netSeg.eval()
-        for index, (data, target, seg) in enumerate(train_bar):
+        for index, (data, target, label) in enumerate(train_bar):
             batch_size = data.size(0)
             running_results['batch_sizes'] += batch_size
     
@@ -82,7 +82,7 @@ if __name__ == '__main__':
             if torch.cuda.is_available():
                 z = z.cuda()
             fake_img = netG(z)
-            seg = seg.cuda()
+            label = label.cuda()
             netD.zero_grad()
             real_out = netD(real_img).mean()
             fake_out = netD(fake_img).mean()
@@ -101,10 +101,10 @@ if __name__ == '__main__':
             # else:
             feed = {}
             feed['img_data'] = fake_img
-            feed['seg_label'] = seg
-            segSize = (seg.shape[0], seg.shape[1])
-            seg_pred = netSeg(feed, segSize=segSize)
-            g_loss = generator_criterion(fake_out.detach(), fake_img, real_img, seg_pred)
+            feed['seg_label'] = label
+            segSize = (label.shape[0], label.shape[1])
+            label_pred = netSeg(feed, segSize=segSize)
+            g_loss = generator_criterion(fake_out.detach(), fake_img, real_img, label, label_pred)
             g_loss.backward()
             
             fake_img = netG(z)
