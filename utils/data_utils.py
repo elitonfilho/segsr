@@ -29,13 +29,16 @@ def train_lr_transform(crop_size, upscale_factor):
         ToTensor()
     ])
 
-def get_seg_img(pathImageHR):
+def get_seg_img(pathImageHR, val=False):
     name = Path(pathImageHR).stem
     pathSeg = Path(pathImageHR, '../../annotation', f'{name}.png').resolve()
-    return Compose([
-        CenterCrop(192),
-        ToTensor()
-    ])(Image.open(pathSeg))
+    if val:
+        return Image.open(pathImageHR)
+    else:
+        return Compose([
+            CenterCrop(256),
+            ToTensor()
+        ])(Image.open(pathSeg))
 
 
 def display_transform():
@@ -73,6 +76,7 @@ class ValDatasetFromFolder(Dataset):
 
     def __getitem__(self, index):
         hr_image = Image.open(self.image_filenames[index])
+        seg_img = get_seg_img(self.image_filenames[index], val=True)
         w, h = hr_image.size
         crop_size = calculate_valid_crop_size(min(w, h), self.upscale_factor)
         lr_scale = Resize(crop_size // self.upscale_factor, interpolation=Image.BICUBIC)
@@ -80,7 +84,6 @@ class ValDatasetFromFolder(Dataset):
         hr_image = CenterCrop(crop_size)(hr_image)
         lr_image = lr_scale(hr_image)
         hr_restore_img = hr_scale(lr_image)
-        seg_img = get_seg_img(self.image_filenames[index])
         return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image), ToTensor()(seg_img)
 
     def __len__(self):

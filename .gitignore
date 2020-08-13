@@ -1,3 +1,8 @@
 __pycache__
 data/
 training_results/
+epochs/
+*.png
+*.aux.xml
+
+sheet.py

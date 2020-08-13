@@ -15,7 +15,7 @@ class GeneratorLoss(nn.Module):
         self.tv_loss = TVLoss()
         self.seg_loss = SegLoss()
 
-    def forward(self, out_labels, out_images, target_images, seg_label, seg_pred):
+    def forward(self, out_labels, out_images, target_images, seg_label=None, seg_pred=None):
         # Adversarial Loss
         adversarial_loss = torch.mean(1 - out_labels)
         # Perception Loss
@@ -24,7 +24,7 @@ class GeneratorLoss(nn.Module):
         image_loss = self.mse_loss(out_images, target_images)
         # TV Loss
         tv_loss = self.tv_loss(out_images)
-        seg_loss = self.seg_loss(seg_label, seg_pred)
+        seg_loss = self.seg_loss(seg_pred, seg_label)
         print(f'Adv: {adversarial_loss} Percep: {perception_loss} Img: {image_loss} TV: {tv_loss} SL: {seg_loss}')
         return image_loss + 0.001 * adversarial_loss + 0.006 * perception_loss + 2e-8 * tv_loss
 
@@ -51,18 +51,23 @@ class TVLoss(nn.Module):
 class SegLoss(nn.Module):
     def __init__(self):
         super().__init__()
+        weights = torch.tensor([.1, .3, .3, .3])
+        self.CEE = nn.CrossEntropyLoss(weight=weights)
 
-    def forward(self, label, pred):
-        t_sum, t_acc = 0, 0
-        for i in range(pred.shape[0]):
-            valid = (label[i,0] >= 0)
-            acc_sum = (valid * (pred[i,3] == label[i,0])).sum()
-            print(valid.shape, acc_sum)
-            valid_sum = valid.sum()
-            acc = float(acc_sum) / (valid_sum + 1e-10)
-            t_sum += valid_sum
-            t_acc += acc
-        return t_acc
+    def forward(self, pred, label):
+        return self.CEE(pred, label)
+
+    # def forward(self, label, pred):
+    #     t_sum, t_acc = 0, 0
+    #     for i in range(pred.shape[0]):
+    #         valid = (label[i,0] >= 0)
+    #         acc_sum = (valid * (pred[i,3] == label[i,0])).sum()
+    #         # print(valid.shape, acc_sum)
+    #         valid_sum = valid.sum()
+    #         acc = float(acc_sum) / (valid_sum + 1e-10)
+    #         t_sum += valid_sum
+    #         t_acc += acc
+    #     return t_acc
 
 
 if __name__ == "__main__":
