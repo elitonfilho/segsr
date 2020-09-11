@@ -503,11 +503,11 @@ class SegmentationModule(SegmentationModuleBase):
             return pred
 
 def getHrnetv2():
-    model = HRNetV2(n_class=4)
-    model.load_state_dict(torch.load('C:\\Users\\Eliton\\Documents\\master\\segsr\\data\\encoder.pth'), strict=False)
+    model = HRNetV2(n_class=5)
+    model.load_state_dict(torch.load('data/encoder.pth'), strict=False)
     return model
 
 def getC1():
-    model = C1(fc_dim=720, num_class=4, use_softmax=True)
-    model.load_state_dict(torch.load('C:\\Users\\Eliton\\Documents\\master\\segsr\\data\\decoder.pth'), strict=False)
+    model = C1(fc_dim=720, num_class=5, use_softmax=True)
+    model.load_state_dict(torch.load('data/decoder.pth'), strict=False)
     return model

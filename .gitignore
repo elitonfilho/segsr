@@ -6,3 +6,4 @@ epochs/
 *.aux.xml
 
 sheet.py
+.vscode/

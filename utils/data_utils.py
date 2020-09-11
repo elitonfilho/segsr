@@ -1,8 +1,10 @@
 from os import listdir
 from os.path import join
 from pathlib import Path
+import numpy as np
 
 from PIL import Image
+import torch
 from torch.utils.data.dataset import Dataset
 from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize
 
@@ -36,8 +38,7 @@ def get_seg_img(pathImageHR, val=False):
         return Image.open(pathImageHR)
     else:
         return Compose([
-            CenterCrop(256),
-            ToTensor()
+            CenterCrop(256)
         ])(Image.open(pathSeg))
 
 
@@ -61,7 +62,7 @@ class TrainDatasetFromFolder(Dataset):
     def __getitem__(self, index):
         hr_image = self.hr_transform(Image.open(self.image_filenames[index]))
         lr_image = self.lr_transform(hr_image)
-        seg_image = get_seg_img(self.image_filenames[index])
+        seg_image = torch.as_tensor(np.array(get_seg_img(self.image_filenames[index])), dtype=torch.long)
         return lr_image, hr_image, seg_image
 
     def __len__(self):

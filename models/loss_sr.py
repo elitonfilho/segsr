@@ -4,7 +4,7 @@ from torchvision.models.vgg import vgg16
 
 
 class GeneratorLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, seg='hrnet'):
         super(GeneratorLoss, self).__init__()
         vgg = vgg16(pretrained=True)
         loss_network = nn.Sequential(*list(vgg.features)[:31]).eval()
@@ -13,7 +13,7 @@ class GeneratorLoss(nn.Module):
         self.loss_network = loss_network
         self.mse_loss = nn.MSELoss()
         self.tv_loss = TVLoss()
-        self.seg_loss = SegLoss()
+        self.seg_loss = getSegLoss(seg)
 
     def forward(self, out_labels, out_images, target_images, seg_label=None, seg_pred=None):
         # Adversarial Loss
@@ -24,9 +24,9 @@ class GeneratorLoss(nn.Module):
         image_loss = self.mse_loss(out_images, target_images)
         # TV Loss
         tv_loss = self.tv_loss(out_images)
-        seg_loss = self.seg_loss(seg_pred, seg_label)
+        seg_loss = self.seg_loss(seg_pred, seg_label) if self.seg_loss else 0
         print(f'Adv: {adversarial_loss} Percep: {perception_loss} Img: {image_loss} TV: {tv_loss} SL: {seg_loss}')
-        return image_loss + 0.001 * adversarial_loss + 0.006 * perception_loss + 2e-8 * tv_loss
+        return image_loss + 0.001 * adversarial_loss + 0.006 * perception_loss + 2e-8 * tv_loss + 0.1 * seg_loss, seg_loss
 
 
 class TVLoss(nn.Module):
@@ -48,11 +48,13 @@ class TVLoss(nn.Module):
     def tensor_size(t):
         return t.size()[1] * t.size()[2] * t.size()[3]
 
+
 class SegLoss(nn.Module):
     def __init__(self):
         super().__init__()
-        weights = torch.tensor([.1, .3, .3, .3])
-        self.CEE = nn.CrossEntropyLoss(weight=weights)
+        # weights = torch.tensor([.1, .3, .3, .3])
+        # self.CEE = nn.CrossEntropyLoss(weight=weights)
+        self.CEE = nn.CrossEntropyLoss()
 
     def forward(self, pred, label):
         return self.CEE(pred, label)
@@ -68,6 +70,13 @@ class SegLoss(nn.Module):
     #         t_sum += valid_sum
     #         t_acc += acc
     #     return t_acc
+
+
+def getSegLoss(loss):
+    if loss == 'hrnet':
+        return SegLoss()
+    else:
+        return None
 
 
 if __name__ == "__main__":
