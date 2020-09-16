@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Test Single Image')
 parser.add_argument('--upscale_factor', default=4, type=int, help='super resolution upscale factor')
 parser.add_argument('--test_mode', default='GPU', type=str, choices=['GPU', 'CPU'], help='using GPU or CPU')
 parser.add_argument('--image_name', type=str, help='test low resolution image name', default='data/LR/2953-3-SO_0_LR.png')
-parser.add_argument('--model_name', default='netG_epoch_4_10_seg.pth', type=str, help='generator model epoch name')
+parser.add_argument('--model_name', default='25_noseg_encoder.pth', type=str, help='generator model epoch name')
 opt = parser.parse_args()
 
 UPSCALE_FACTOR = opt.upscale_factor

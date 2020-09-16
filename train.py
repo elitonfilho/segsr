@@ -14,6 +14,7 @@ from torch.tensor import Tensor
 from torch.utils.data import DataLoader
 from config import cfg
 from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
+from utils import pytorch_ssim
 from models.loss_sr import GeneratorLoss
 from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
@@ -47,11 +48,11 @@ if __name__ == '__main__':
     train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir,
                                        crop_size=cfg.TRAIN.crop_size,
                                        upscale_factor=cfg.TRAIN.upscale_factor)
-    # val_set = ValDatasetFromFolder('data/val', upscale_factor=cfg.TRAIN.upscale_factor)
+    val_set = ValDatasetFromFolder('data/val', upscale_factor=cfg.TRAIN.upscale_factor)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
-    # val_loader = DataLoader(dataset=val_set, num_workers=4,batch_size=1, shuffle=False)
+    val_loader = DataLoader(dataset=val_set, num_workers=4,batch_size=cfg.VAL.batch_size, shuffle=False)
 
     netG = Generator(cfg.TRAIN.upscale_factor)
     netD = Discriminator()
@@ -98,6 +99,7 @@ if __name__ == '__main__':
             ############################
             # (1) Update D network: maximize D(x)-1-D(G(z))
             ###########################
+
             real_img = Tensor(target)
             if torch.cuda.is_available():
                 real_img = real_img.cuda()
@@ -120,7 +122,8 @@ if __name__ == '__main__':
 
             netG.zero_grad()
 
-            if cfg.TRAIN.arch_enc == 'hrnet' and float(epoch / cfg.TRAIN.num_epochs) >= 0.7:
+            _use_seg = True if (cfg.TRAIN.use_seg and float(epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
+            if _use_seg and cfg.TRAIN.arch_enc == 'hrnet' and float(epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg:
                 feed = {
                     'img_data': fake_img,
                     'seg_label': label
@@ -132,7 +135,7 @@ if __name__ == '__main__':
                     fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             else:
                 g_loss, _sl = generator_criterion(
-                    fake_out.detach(), fake_img, real_img, use_seg=cfg.TRAIN.use_seg)
+                    fake_out.detach(), fake_img, real_img, use_seg=_use_seg)
 
             g_loss.backward()
 
@@ -156,54 +159,55 @@ if __name__ == '__main__':
                 running_results['d_score'] / running_results['batch_sizes'],
                 running_results['g_score'] / running_results['batch_sizes'],
                 running_results['SL'] / running_results['batch_sizes']))
+        
+        if cfg.TRAIN.visualize:
+            netG.eval()
+            out_path = 'results/train_' + str(cfg.TRAIN.model_name) + '/'
+            if not os.path.exists(out_path):
+                os.makedirs(out_path)
 
-        # netG.eval()
-        # out_path = 'training_results/SRF_' + str(cfg.TRAIN.upscale_factor) + '/'
-        # if not os.path.exists(out_path):
-        #     os.makedirs(out_path)
+            with torch.no_grad():
+                val_bar = tqdm(val_loader)
+                valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
+                val_images = []
+                for val_lr, val_hr_restore, val_hr, val_seg in val_bar:
+                    batch_size = val_lr.size(0)
+                    valing_results['batch_sizes'] += batch_size
+                    lr = val_lr
+                    hr = val_hr
+                    if torch.cuda.is_available():
+                        lr = lr.cuda()
+                        hr = hr.cuda()
+                    sr = netG(lr)
 
-        # with torch.no_grad():
-        #     val_bar = tqdm(val_loader)
-        #     valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
-        #     val_images = []
-        #     for val_lr, val_hr_restore, val_hr, val_seg in val_bar:
-        #         batch_size = val_lr.size(0)
-        #         valing_results['batch_sizes'] += batch_size
-        #         lr = val_lr
-        #         hr = val_hr
-        #         if torch.cuda.is_available():
-        #             lr = lr.cuda()
-        #             hr = hr.cuda()
-        #         sr = netG(lr)
-
-        #         batch_mse = ((sr - hr) ** 2).data.mean()
-        #         valing_results['mse'] += batch_mse * batch_size
-        #         batch_ssim = pytorch_ssim.ssim(sr, hr).item()
-        #         valing_results['ssims'] += batch_ssim * batch_size
-        #         valing_results['psnr'] = 10 * log10((hr.max()**2) / (valing_results['mse'] / valing_results['batch_sizes']))
-        #         valing_results['ssim'] = valing_results['ssims'] / valing_results['batch_sizes']
-        #         val_bar.set_description(
-        #             desc='[converting LR images to SR images] PSNR: %.4f dB SSIM: %.4f' % (
-        #                 valing_results['psnr'], valing_results['ssim']))
-
-        #         val_images.extend(
-        #             [display_transform()(val_hr_restore.squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
-        #              display_transform()(sr.data.cpu().squeeze(0))])
-        #     val_images = torch.stack(val_images)
-        #     val_images = torch.chunk(val_images, val_images.size(0) // 15)
-            # val_save_bar = tqdm(val_images, desc='[saving training results]')
-            # index = 0
-            # for image in val_save_bar:
-            #     image = utils.make_grid(image, nrow=3, padding=5)
-            #     utils.save_image(image, out_path + 'epoch_%d_index_%d.png' % (epoch, index), padding=5)
-            #     index += 1
+                    batch_mse = ((sr - hr) ** 2).data.mean()
+                    valing_results['mse'] += batch_mse * batch_size
+                    batch_ssim = pytorch_ssim.ssim(sr, hr).item()
+                    valing_results['ssims'] += batch_ssim * batch_size
+                    valing_results['psnr'] = 10 * log10((hr.max()**2) / (valing_results['mse'] / valing_results['batch_sizes']))
+                    valing_results['ssim'] = valing_results['ssims'] / valing_results['batch_sizes']
+                    val_bar.set_description(
+                        desc='[converting LR images to SR images] PSNR: %.4f dB SSIM: %.4f' % (
+                            valing_results['psnr'], valing_results['ssim']))
+                    
+                    val_images.extend(
+                        [display_transform()(val_hr_restore.squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
+                        display_transform()(sr.data.cpu().squeeze(0))])
+                val_images = torch.stack(val_images)
+                val_images = torch.chunk(val_images, val_images.size(0) // (3*cfg.VAL.n_rows))
+                val_save_bar = tqdm(val_images, desc='[saving training results]')
+                index = 0
+                for image in val_save_bar:
+                    image = utils.make_grid(image, nrow=3, padding=2)
+                    utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' % (epoch, index), padding=5)
+                    index += 1
 
         # save model parameters
         if epoch == cfg.TRAIN.num_epochs:
-            torch.save(netG.state_dict(), 'epochs/netG_epoch_%d_%d_seg_com.pth' %
-                       (cfg.TRAIN.upscale_factor, epoch))
-            torch.save(netD.state_dict(), 'epochs/netD_epoch_%d_%d_seg_com.pth' %
-                       (cfg.TRAIN.upscale_factor, epoch))
+            torch.save(netG.state_dict(),
+                       f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
+            torch.save(netD.state_dict(),
+                       f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_decoder.pth')
         # save loss\scores\psnr\ssim
         # results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         # results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])

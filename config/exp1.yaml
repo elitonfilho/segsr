@@ -5,16 +5,21 @@ DATASET:
   n_classes: 5
 
 TRAIN:
-  use_seg: False
+  use_seg: True
   arch_enc: 'hrnet'
-  num_epochs: 100
+  begin_seg: 0.7
+  num_epochs: 25
   batch_size: 8
   crop_size: 256
   upscale_factor: 4
-  model_save_path:
-  model_name:
+  visualize: True
+  model_save_path: 'epochs/'
+  model_name: '25_seg'
+
+VAL:
+  batch_size: 1
+  n_rows: 3
 
 TEST:
   batch_size: 1
-  path_encoder: ""
   path_encoder: ""
