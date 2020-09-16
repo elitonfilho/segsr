@@ -1,0 +1,20 @@
+DATASET:
+  train_dir: 'data/train'
+  val_dir: 'data/val'
+  seg_dir: 'data/annotation'
+  n_classes: 5
+
+TRAIN:
+  use_seg: False
+  arch_enc: 'hrnet'
+  num_epochs: 100
+  batch_size: 8
+  crop_size: 256
+  upscale_factor: 4
+  model_save_path:
+  model_name:
+
+TEST:
+  batch_size: 1
+  path_encoder: ""
+  path_encoder: ""

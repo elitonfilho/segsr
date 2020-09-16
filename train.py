@@ -1,67 +1,68 @@
 import argparse
 import os
 from math import log10
-
+import yaml
 import pandas as pd
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.utils.data
 import torchvision.utils as utils
-from torch.autograd import Variable
 from torch.tensor import Tensor
-from torch.utils.data import DataLoader, RandomSampler
-from tqdm import tqdm
-import yaml
-import matplotlib.pyplot as plt
-from PIL import Image
-
-from torchvision.transforms import ToTensor, ToPILImage
-from utils import pytorch_ssim
+from torch.utils.data import DataLoader
+from config import cfg
 from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
 from models.loss_sr import GeneratorLoss
 from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
 from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
 
-parser = argparse.ArgumentParser(description='Train Super Resolution Models')
-parser.add_argument('--crop_size', default=256, type=int,
-                    help='training images crop size')
-parser.add_argument('--upscale_factor', default=4, type=int, choices=[2, 4, 8],
-                    help='super resolution upscale factor')
-parser.add_argument('--num_epochs', default=100,
-                    type=int, help='train epoch number')
-parser.add_argument('--seg', default='hrnet',
-                    help='decide which segmentation model to use (or none)')
-
 
 if __name__ == '__main__':
-    opt = parser.parse_args()
 
-    # with open('settigs.yaml') as settings:
-    #     opt = yaml.load(settings)
+    parser = argparse.ArgumentParser(
+        description='Train Super Resolution Models')
 
-    CROP_SIZE = opt.crop_size
-    UPSCALE_FACTOR = opt.upscale_factor
-    NUM_EPOCHS = opt.num_epochs
-    SEG = opt.seg
+    parser.add_argument(
+        "--cfg",
+        default="config/exp1.yaml",
+        metavar="FILE",
+        help="path to config file",
+        type=str,
+    )
 
-    train_set = TrainDatasetFromFolder(
-        'data/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
-    val_set = ValDatasetFromFolder('data/val', upscale_factor=UPSCALE_FACTOR)
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
 
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=8, shuffle=True)
-    # val_loader = DataLoader(dataset=val_set, num_workers=4,
-    #                         batch_size=1, shuffle=False)
+    args = parser.parse_args()
+    cfg.merge_from_file(args.cfg)
+    cfg.merge_from_list(args.opts)
 
-    netG = Generator(UPSCALE_FACTOR)
+    train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir,
+                                       crop_size=cfg.TRAIN.crop_size,
+                                       upscale_factor=cfg.TRAIN.upscale_factor)
+    # val_set = ValDatasetFromFolder('data/val', upscale_factor=cfg.TRAIN.upscale_factor)
+
+    train_loader = DataLoader(dataset=train_set, num_workers=4,
+                              batch_size=cfg.TRAIN.batch_size, shuffle=True)
+    # val_loader = DataLoader(dataset=val_set, num_workers=4,batch_size=1, shuffle=False)
+
+    netG = Generator(cfg.TRAIN.upscale_factor)
     netD = Discriminator()
-    if SEG == 'hrnet':
-        netSeg = SegmentationModule(net_enc=getHrnetv2(
-        ), net_dec=getC1(), crit=nn.NLLLoss(ignore_index=1))
+    if cfg.TRAIN.arch_enc == 'hrnet':
+        netSeg = SegmentationModule(net_enc=getHrnetv2(cfg.DATASET.n_classes),
+                                    net_dec=getC1(cfg.DATASET.n_classes),
+                                    crit=nn.NLLLoss(ignore_index=1))
     else:
         print('Not using a segmentation module')
 
-    generator_criterion = GeneratorLoss(seg=SEG)
+    generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc)
 
     if torch.cuda.is_available():
         netG.cuda()
@@ -78,10 +79,10 @@ if __name__ == '__main__':
     results = {'d_loss': [], 'g_loss': [], 'd_score': [],
                'g_score': [], 'psnr': [], 'ssim': []}
 
-    for epoch in range(1, NUM_EPOCHS + 1):
+    for epoch in range(1, cfg.TRAIN.num_epochs + 1):
         train_bar = tqdm(train_loader)
         running_results = {'batch_sizes': 0, 'd_loss': 0,
-                           'g_loss': 0, 'd_score': 0, 'g_score': 0, 'SL':0}
+                           'g_loss': 0, 'd_score': 0, 'g_score': 0, 'SL': 0}
 
         netG.train()
         netD.train()
@@ -89,6 +90,7 @@ if __name__ == '__main__':
             netSeg.eval()
         except NameError:
             pass
+
         for index, (data, target, label) in enumerate(train_bar):
             batch_size = data.size(0)
             running_results['batch_sizes'] += batch_size
@@ -118,7 +120,7 @@ if __name__ == '__main__':
 
             netG.zero_grad()
 
-            if SEG == 'hrnet':
+            if cfg.TRAIN.arch_enc == 'hrnet' and float(epoch / cfg.TRAIN.num_epochs) >= 0.7:
                 feed = {
                     'img_data': fake_img,
                     'seg_label': label
@@ -127,9 +129,10 @@ if __name__ == '__main__':
                 label_pred = netSeg(feed, segSize=segSize)
                 label = label.long().squeeze(1)
                 g_loss, _sl = generator_criterion(
-                    fake_out.detach(), fake_img, real_img, label, label_pred)
+                    fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             else:
-                g_loss, _sl = generator_criterion(fake_out.detach(), fake_img, real_img)
+                g_loss, _sl = generator_criterion(
+                    fake_out.detach(), fake_img, real_img, use_seg=cfg.TRAIN.use_seg)
 
             g_loss.backward()
 
@@ -143,10 +146,11 @@ if __name__ == '__main__':
             running_results['d_loss'] += d_loss.item() * batch_size
             running_results['d_score'] += real_out.item() * batch_size
             running_results['g_score'] += fake_out.item() * batch_size
-            running_results['SL'] += _sl.item() * batch_size if SEG == 'hrnet' else 0
-            
+            # running_results['SL'] += _sl.item() * batch_size if SEG == 'hrnet' else _0
+            running_results['SL'] += 0
+
             train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f SL: %.4f' % (
-                epoch, NUM_EPOCHS, running_results['d_loss'] /
+                epoch, cfg.TRAIN.num_epochs, running_results['d_loss'] /
                 running_results['batch_sizes'],
                 running_results['g_loss'] / running_results['batch_sizes'],
                 running_results['d_score'] / running_results['batch_sizes'],
@@ -154,7 +158,7 @@ if __name__ == '__main__':
                 running_results['SL'] / running_results['batch_sizes']))
 
         # netG.eval()
-        # out_path = 'training_results/SRF_' + str(UPSCALE_FACTOR) + '/'
+        # out_path = 'training_results/SRF_' + str(cfg.TRAIN.upscale_factor) + '/'
         # if not os.path.exists(out_path):
         #     os.makedirs(out_path)
 
@@ -195,11 +199,11 @@ if __name__ == '__main__':
             #     index += 1
 
         # save model parameters
-        if epoch == NUM_EPOCHS:
-            torch.save(netG.state_dict(), 'epochs/netG_epoch_%d_%d_seg.pth' %
-                       (UPSCALE_FACTOR, epoch))
-            torch.save(netD.state_dict(), 'epochs/netD_epoch_%d_%d_seg.pth' %
-                       (UPSCALE_FACTOR, epoch))
+        if epoch == cfg.TRAIN.num_epochs:
+            torch.save(netG.state_dict(), 'epochs/netG_epoch_%d_%d_seg_com.pth' %
+                       (cfg.TRAIN.upscale_factor, epoch))
+            torch.save(netD.state_dict(), 'epochs/netD_epoch_%d_%d_seg_com.pth' %
+                       (cfg.TRAIN.upscale_factor, epoch))
         # save loss\scores\psnr\ssim
         # results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         # results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
@@ -214,4 +218,4 @@ if __name__ == '__main__':
         #         data={'Loss_D': results['d_loss'], 'Loss_G': results['g_loss'], 'Score_D': results['d_score'],
         #               'Score_G': results['g_score'], 'PSNR': results['psnr'], 'SSIM': results['ssim']},
         #         index=range(1, epoch + 1))
-        #     data_frame.to_csv(out_path + 'srf_' + str(UPSCALE_FACTOR) + '_train_results.csv', index_label='Epoch')
+        #     data_frame.to_csv(out_path + 'srf_' + str(cfg.TRAIN.upscale_factor) + '_train_results.csv', index_label='Epoch')

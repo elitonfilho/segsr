@@ -502,12 +502,12 @@ class SegmentationModule(SegmentationModuleBase):
             pred = self.decoder(self.encoder(feed_dict['img_data'], return_feature_maps=True), segSize=segSize)
             return pred
 
-def getHrnetv2():
-    model = HRNetV2(n_class=5)
+def getHrnetv2(n_class):
+    model = HRNetV2(n_class=n_class)
     model.load_state_dict(torch.load('data/encoder.pth'), strict=False)
     return model
 
-def getC1():
-    model = C1(fc_dim=720, num_class=5, use_softmax=True)
+def getC1(n_class):
+    model = C1(fc_dim=720, num_class=n_class, use_softmax=True)
     model.load_state_dict(torch.load('data/decoder.pth'), strict=False)
     return model
