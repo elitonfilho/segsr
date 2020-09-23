@@ -19,6 +19,8 @@ from models.loss_sr import GeneratorLoss
 from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
 from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
+from models.model_unet_resnet import UNetResNet
+from models.model_unet import UNet
 
 
 if __name__ == '__main__':
@@ -45,10 +47,9 @@ if __name__ == '__main__':
     cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
 
-    train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir,
-                                       crop_size=cfg.TRAIN.crop_size,
+    train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir, crop_size=cfg.TRAIN.crop_size,
                                        upscale_factor=cfg.TRAIN.upscale_factor)
-    val_set = ValDatasetFromFolder('data/val', upscale_factor=cfg.TRAIN.upscale_factor)
+    val_set = ValDatasetFromFolder(cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
@@ -60,6 +61,8 @@ if __name__ == '__main__':
         netSeg = SegmentationModule(net_enc=getHrnetv2(cfg.DATASET.n_classes),
                                     net_dec=getC1(cfg.DATASET.n_classes),
                                     crit=nn.NLLLoss(ignore_index=1))
+    elif cfg.TRAIN.arch_enc == 'unet':
+        netSeg = UNetResNet(num_classes=cfg.DATASET.n_classes)
     else:
         print('Not using a segmentation module')
 

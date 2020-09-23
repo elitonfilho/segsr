@@ -75,6 +75,8 @@ class SegLoss(nn.Module):
 def getSegLoss(loss):
     if loss == 'hrnet':
         return SegLoss()
+    elif loss == 'unet':
+        return SegLoss()
     else:
         return None
 
