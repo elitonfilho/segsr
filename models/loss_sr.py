@@ -25,8 +25,14 @@ class GeneratorLoss(nn.Module):
         # TV Loss
         tv_loss = self.tv_loss(out_images)
         seg_loss = self.seg_loss(seg_pred, seg_label) if use_seg else 0
-        # print(f'Adv: {adversarial_loss} Percep: {perception_loss} Img: {image_loss} TV: {tv_loss} SL: {seg_loss}')
-        return image_loss + 0.001 * adversarial_loss + 0.006 * perception_loss + 2e-8 * tv_loss + 0.1 * seg_loss, seg_loss
+        losses = {
+            "image_loss": image_loss.item(),
+            "adversarial_loss": adversarial_loss.item(),
+            "perception_loss":perception_loss.item(),
+            "tv_loss": tv_loss.item(),
+            "seg_loss": seg_loss.item()
+        }
+        return image_loss + 0.001 * adversarial_loss + 0.006 * perception_loss + 2e-8 * tv_loss + 0.001 * seg_loss, losses
 
 
 class TVLoss(nn.Module):

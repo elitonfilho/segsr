@@ -57,18 +57,19 @@ def calculate_ssim(img1, img2):
         raise ValueError('Wrong input image dimensions.')
 
 if __name__ == "__main__":
-    img1 = Image.open('test1.png').resize((256,256), resample=Image.BICUBIC)
-    img1 = np.array(img1)
-    img2 = Image.open('test2.png').resize((256,256), resample=Image.BICUBIC)
+    # img1 = Image.open('data/HR/2953-3-SO_0_HR.png').resize((256,256), resample=Image.BICUBIC)
+    # img1 = np.array(img1)
+    # img2 = Image.open('1e-2.png').resize((256,256), resample=Image.BICUBIC)
+    img2 = Image.open('lr.png')
     img2 = np.array(img2)
     imgHR = Image.open('data/HR/2953-3-SO_0_HR.png')
     # w, h = imgHR.size
     # imgHR = imgHR.resize((4*w, 4*h), resample=Image.BICUBIC)
     imgHR = np.array(imgHR)
     # 1: Com seg, 2: Sem Seg
-    print('1 e 2', calculate_psnr(img1, img2))
-    print('1 e HR', calculate_psnr(img1, imgHR))
-    print('2 e HR', calculate_psnr(img2, imgHR))
-    print('1 e 2', calculate_ssim(img1, img2))
-    print('1 e HR', calculate_ssim(img1, imgHR))
-    print('2 e HR', calculate_ssim(img2, imgHR))
+    # print('1 e 2', calculate_psnr(img1, img2))
+    print('1 e HR', calculate_psnr(img2, imgHR))
+    # print('2 e HR', calculate_psnr(img2, imgHR))
+    # print('1 e 2', calculate_ssim(img1, img2))
+    print('1 e HR', calculate_ssim(img2, imgHR))
+    # print('2 e HR', calculate_ssim(img2, imgHR))

@@ -53,7 +53,8 @@ if __name__ == '__main__':
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
-    val_loader = DataLoader(dataset=val_set, num_workers=4,batch_size=cfg.VAL.batch_size, shuffle=False)
+    val_loader = DataLoader(dataset=val_set, num_workers=4,
+                            batch_size=cfg.VAL.batch_size, shuffle=False)
 
     netG = Generator(cfg.TRAIN.upscale_factor)
     netD = Discriminator()
@@ -67,6 +68,10 @@ if __name__ == '__main__':
         print('Not using a segmentation module')
 
     generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc)
+
+    if cfg.TRAIN.use_pretrained_sr:
+        netG.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
+        netD.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
 
     if torch.cuda.is_available():
         netG.cuda()
@@ -86,7 +91,8 @@ if __name__ == '__main__':
     for epoch in range(1, cfg.TRAIN.num_epochs + 1):
         train_bar = tqdm(train_loader)
         running_results = {'batch_sizes': 0, 'd_loss': 0,
-                           'g_loss': 0, 'd_score': 0, 'g_score': 0, 'SL': 0}
+                           'g_loss': 0, 'd_score': 0, 'g_score': 0, 'SL': 0,
+                           'seg': 0, 'adv': 0, 'img': 0, 'per': 0, 'tv': 0}
 
         netG.train()
         netD.train()
@@ -126,7 +132,7 @@ if __name__ == '__main__':
             netG.zero_grad()
 
             _use_seg = True if (cfg.TRAIN.use_seg and float(epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
-            if _use_seg and cfg.TRAIN.arch_enc == 'hrnet' and float(epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg:
+            if _use_seg and cfg.TRAIN.arch_enc == 'hrnet':
                 feed = {
                     'img_data': fake_img,
                     'seg_label': label
@@ -134,10 +140,10 @@ if __name__ == '__main__':
                 segSize = (label.shape[0], label.shape[1])
                 label_pred = netSeg(feed, segSize=segSize)
                 label = label.long().squeeze(1)
-                g_loss, _sl = generator_criterion(
+                g_loss, losses = generator_criterion(
                     fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             else:
-                g_loss, _sl = generator_criterion(
+                g_loss, losses = generator_criterion(
                     fake_out.detach(), fake_img, real_img, use_seg=_use_seg)
 
             g_loss.backward()
@@ -152,17 +158,28 @@ if __name__ == '__main__':
             running_results['d_loss'] += d_loss.item() * batch_size
             running_results['d_score'] += real_out.item() * batch_size
             running_results['g_score'] += fake_out.item() * batch_size
+            running_results['seg'] += losses['seg_loss'] * batch_size
+            running_results['adv'] += losses['adversarial_loss'] * batch_size
+            running_results['img'] += losses['image_loss'] * batch_size
+            running_results['per'] += losses['perception_loss'] * batch_size
+            running_results['tv'] += losses['tv_loss'] * batch_size
             # running_results['SL'] += _sl.item() * batch_size if SEG == 'hrnet' else _0
-            running_results['SL'] += 0
+            # running_results['SL'] += 0
 
-            train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f SL: %.4f' % (
-                epoch, cfg.TRAIN.num_epochs, running_results['d_loss'] /
-                running_results['batch_sizes'],
+            train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f \
+            Seg: %.4f Adv: %.4f  Img: %.4f  Per: %.4f Tv: %.4f' % (
+                epoch, cfg.TRAIN.num_epochs,
+                running_results['d_loss'] / running_results['batch_sizes'],
                 running_results['g_loss'] / running_results['batch_sizes'],
                 running_results['d_score'] / running_results['batch_sizes'],
                 running_results['g_score'] / running_results['batch_sizes'],
-                running_results['SL'] / running_results['batch_sizes']))
-        
+                running_results['seg'] / running_results['batch_sizes'],
+                running_results['adv'] / running_results['batch_sizes'],
+                running_results['img'] / running_results['batch_sizes'],
+                running_results['per'] / running_results['batch_sizes'],
+                running_results['tv'] / running_results['batch_sizes'],
+            ))
+
         if cfg.TRAIN.visualize:
             netG.eval()
             out_path = 'results/train_' + str(cfg.TRAIN.model_name) + '/'
@@ -187,22 +204,24 @@ if __name__ == '__main__':
                     valing_results['mse'] += batch_mse * batch_size
                     batch_ssim = pytorch_ssim.ssim(sr, hr).item()
                     valing_results['ssims'] += batch_ssim * batch_size
-                    valing_results['psnr'] = 10 * log10((hr.max()**2) / (valing_results['mse'] / valing_results['batch_sizes']))
+                    valing_results['psnr'] = 10 * log10((hr.max()**2) /
+                                                        (valing_results['mse'] / valing_results['batch_sizes']))
                     valing_results['ssim'] = valing_results['ssims'] / valing_results['batch_sizes']
                     val_bar.set_description(
                         desc='[converting LR images to SR images] PSNR: %.4f dB SSIM: %.4f' % (
                             valing_results['psnr'], valing_results['ssim']))
-                    
+
                     val_images.extend(
                         [display_transform()(val_hr_restore.squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
-                        display_transform()(sr.data.cpu().squeeze(0))])
+                         display_transform()(sr.data.cpu().squeeze(0))])
                 val_images = torch.stack(val_images)
                 val_images = torch.chunk(val_images, val_images.size(0) // (3*cfg.VAL.n_rows))
                 val_save_bar = tqdm(val_images, desc='[saving training results]')
                 index = 0
                 for image in val_save_bar:
                     image = utils.make_grid(image, nrow=3, padding=2)
-                    utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' % (epoch, index), padding=5)
+                    utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' %
+                                     (epoch, index), padding=5)
                     index += 1
 
         # save model parameters

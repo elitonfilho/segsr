@@ -12,6 +12,8 @@ _C.DATASET.n_classes = 5
 
 _C.TRAIN = CN()
 _C.TRAIN.use_seg = True
+_C.TRAIN.use_pretrained_sr = False
+_C.TRAIN.path_pretrained_sr = ''
 _C.TRAIN.arch_enc = 'hrnet'
 _C.TRAIN.begin_seg = 0.7
 _C.TRAIN.num_epochs = 100
