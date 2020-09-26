@@ -23,6 +23,7 @@ _C.TRAIN.visualize = False
 _C.TRAIN.upscale_factor = 4
 _C.TRAIN.model_save_path = 'epochs/'
 _C.TRAIN.model_name = 'model'
+_C.TRAIN.use_aug = None
 
 _C.VAL = CN()
 _C.VAL.batch_size = 5
