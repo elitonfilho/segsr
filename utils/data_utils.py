@@ -16,7 +16,6 @@ aug_train = alb.Compose([
     alb.VerticalFlip(p=0.5),
     alb.HorizontalFlip(p=0.5),
     alb.Transpose(p=0.5),
-    alb.Transpose(p=0.5),
     alb.RandomRotate90(p=0.5),
     ToTensorV2()
 ],
@@ -76,23 +75,20 @@ class TrainDatasetFromFolder(Dataset):
 
 
 class ValDatasetFromFolder(Dataset):
-    def __init__(self, dataset_dir, upscale_factor):
+    def __init__(self, dataset_dir, upscale_factor, crop_size):
         super(ValDatasetFromFolder, self).__init__()
         self.upscale_factor = upscale_factor
         self.image_filenames = [join(dataset_dir, x)
                                 for x in listdir(dataset_dir) if is_image_file(x)]
+        self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
 
     def __getitem__(self, index):
-        hr_image = Image.open(self.image_filenames[index])
-        seg_img = get_seg_img(self.image_filenames[index], val=True)
-        w, h = hr_image.size
-        crop_size = calculate_valid_crop_size(min(w, h), self.upscale_factor)
-        lr_scale = Resize(crop_size // self.upscale_factor, interpolation=Image.BICUBIC)
-        hr_scale = Resize(crop_size, interpolation=Image.BICUBIC)
-        hr_image = CenterCrop(crop_size)(hr_image)
-        lr_image = lr_scale(hr_image)
-        hr_restore_img = hr_scale(lr_image)
-        return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image), ToTensor()(seg_img)
+        hr_image = np.asarray(Image.open(self.image_filenames[index]), dtype=np.uint8)
+        size_hr = hr_image.shape[:2]
+        seg_img = np.asarray(get_seg_img(self.image_filenames[index]), dtype=np.long)
+        lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
+        hr_restore_img = cv2.resize(lr_image, dsize=size_hr, interpolation=cv2.INTER_CUBIC)
+        return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image), torch.tensor(seg_img, dtype=torch.long)
 
     def __len__(self):
         return len(self.image_filenames)
@@ -119,21 +115,27 @@ class TestDatasetFromFolder(Dataset):
         hr_restore_img = hr_scale(lr_image)
         return image_name, ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image)
 
+    def __len__(self):
         return len(self.lr_filenames)
 
 
 def debug():
     train_set = TrainDatasetFromFolder('data/train', crop_size=256,
                                        upscale_factor=4, use_aug=True)
-    hr, lr, mask = train_set[0]
+    dev_set = ValDatasetFromFolder('data/val', crop_size=256,
+                                       upscale_factor=4)
+    # hr, lr, mask = dev_set[0]
+    lr,hr_restore,hr,mask = dev_set[0]
     print(type(hr), hr.shape)
     print(type(lr), lr.shape)
+    print(type(hr_restore), hr_restore.shape)
     print(type(mask), mask.shape)
 
-    fig, ax = plt.subplots(1, 3)
+    fig, ax = plt.subplots(1, 4)
     ax[0].imshow(hr.permute(1,2,0))
     ax[1].imshow(lr.permute(1,2,0))
-    ax[2].imshow(mask)
+    ax[2].imshow(hr_restore.permute(1,2,0))
+    ax[3].imshow(mask)
     plt.show()
 
 
