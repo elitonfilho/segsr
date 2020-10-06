@@ -110,14 +110,14 @@ if __name__ == '__main__':
             # (1) Update D network: maximize D(x)-1-D(G(z))
             ###########################
 
-            real_img = Tensor(target)
+            real_img = target.float()
             if torch.cuda.is_available():
                 real_img = real_img.cuda()
-            z = Tensor(data)
+            z = data.float()
             if torch.cuda.is_available():
                 z = z.cuda()
             fake_img = netG(z)
-            label = label.cuda()
+            label = label.cuda().long()
             netD.zero_grad()
             real_out = netD(real_img).mean()
             fake_out = netD(fake_img).mean()
