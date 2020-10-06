@@ -64,6 +64,7 @@ if __name__ == '__main__':
                                     crit=nn.NLLLoss(ignore_index=1))
     elif cfg.TRAIN.arch_enc == 'unet':
         netSeg = UNetResNet(num_classes=cfg.DATASET.n_classes)
+        netSeg.load_state_dict(torch.load(f'epochs/unet-resnet-100'), strict=False)
     else:
         print('Not using a segmentation module')
 
@@ -140,6 +141,10 @@ if __name__ == '__main__':
                 segSize = (label.shape[0], label.shape[1])
                 label_pred = netSeg(feed, segSize=segSize)
                 label = label.long().squeeze(1)
+                g_loss, losses = generator_criterion(
+                    fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
+            elif _use_seg and cfg.TRAIN.arch_enc == 'unet':
+                label_pred = netSeg(fake_img)
                 g_loss, losses = generator_criterion(
                     fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             else:
