@@ -48,8 +48,8 @@ if __name__ == '__main__':
     cfg.merge_from_list(args.opts)
 
     train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir, crop_size=cfg.TRAIN.crop_size,
-                                       upscale_factor=cfg.TRAIN.upscale_factor)
-    val_set = ValDatasetFromFolder(cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor)
+                                       upscale_factor=cfg.TRAIN.upscale_factor, use_aug=cfg.TRAIN.use_aug)
+    val_set = ValDatasetFromFolder(cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor,crop_size=cfg.TRAIN.crop_size)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)

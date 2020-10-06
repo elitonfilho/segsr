@@ -15,6 +15,7 @@ TRAIN:
   visualize: True
   model_save_path: 'epochs/'
   model_name: '25_seg'
+  use_aug: True
 
 VAL:
   batch_size: 1
