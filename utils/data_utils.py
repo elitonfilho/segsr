@@ -7,9 +7,10 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import torch
 from torch.utils.data.dataset import Dataset
-from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize
+from torch.utils.data import DataLoader
+from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize, Normalize
 import albumentations as alb
-from albumentations.pytorch import ToTensorV2
+from albumentations.pytorch import ToTensorV2, ToTensor
 
 
 aug_train = alb.Compose([
@@ -17,6 +18,11 @@ aug_train = alb.Compose([
     alb.HorizontalFlip(p=0.5),
     alb.Transpose(p=0.5),
     alb.RandomRotate90(p=0.5),
+    # ToTensor(num_classes=4, sigmoid=True, normalize={
+    #     'mean': [0.1593, 0.2112, 0.1966],
+    #     'std': [0.1065, 0.0829, 0.0726]
+    # })
+    # alb.Normalize(mean=(40.6193, 53.8484, 50.1273), std=(27.1632, 21.1268, 18.5095)),
     ToTensorV2()
 ],
     additional_targets={
@@ -36,7 +42,7 @@ def get_seg_img(pathImageHR, val=False):
     name = Path(pathImageHR).stem
     pathSeg = Path(pathImageHR, '../../annotation', f'{name}.png').resolve()
     if val:
-        return Image.open(pathImageHR)
+        return Image.open(pathImageHR)  
     else:
         return Compose([
             CenterCrop(256)
@@ -61,19 +67,18 @@ class TrainDatasetFromFolder(Dataset):
         self.aug = aug_train if use_aug else None
 
     def __getitem__(self, index):
-        hr_image = np.array(Image.open(self.image_filenames[index]), dtype=np.float)
+        hr_image = np.array(Image.open(self.image_filenames[index]), dtype=np.uint8)
         lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
-        seg_image = np.array(get_seg_img(self.image_filenames[index]), dtype=np.long)
+        seg_image = np.array(get_seg_img(self.image_filenames[index]), dtype=np.int32)
         if self.aug:
-            transformed = self.aug(image=hr_image, image_lr=lr_image, mask=seg_image)
+            transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
             lr_image = transformed['image_lr']
             hr_image = transformed['image']
             seg_image = transformed['mask']
             return lr_image, hr_image, seg_image
-        if not self.aug:
-            hr_image = np.transpose(hr_image, (2,0,1))
-            lr_image = np.transpose(lr_image, (2,0,1))
-            return torch.from_numpy(lr_image), torch.from_numpy(hr_image), torch.from_numpy(seg_image)
+        elif not self.aug:
+            # TODO: normalize
+            return ToTensor()(lr_image), ToTensor()(hr_image), torch.from_numpy(seg_image)
 
     def __len__(self):
         return len(self.image_filenames)
@@ -129,20 +134,33 @@ def debug():
                                        upscale_factor=4, use_aug=True)
     dev_set = ValDatasetFromFolder('data/val', crop_size=256,
                                    upscale_factor=4)
-    # hr, lr, mask = dev_set[0]
-    lr, hr_restore, hr, mask = dev_set[0]
+    hr, lr, mask = train_set[0]
+    # lr, hr_restore, hr, mask = dev_set[0]
     print(type(hr), hr.shape)
     print(type(lr), lr.shape)
-    print(type(hr_restore), hr_restore.shape)
+    # print(type(hr_restore), hr_restore.shape)
     print(type(mask), mask.shape)
 
-    fig, ax = plt.subplots(1, 4)
-    ax[0].imshow(hr.permute(1, 2, 0))
-    ax[1].imshow(lr.permute(1, 2, 0))
-    ax[2].imshow(hr_restore.permute(1, 2, 0))
-    ax[3].imshow(mask)
+    fig, ax = plt.subplots(1, 3)
+    # ax[0].imshow(hr.astype(np.uint8))
+    # ax[1].imshow(lr)
+    ax[0].imshow(hr.permute(1,2,0))
+    ax[1].imshow(lr.permute(1,2,0))
+    # ax[2].imshow(hr_restore.permute(1, 2, 0))
+    ax[2].imshow(mask)
     plt.show()
 
 
 if __name__ == "__main__":
     debug()
+    # dataset = TrainDatasetFromFolder('data/train', crop_size=256,
+    #                                    upscale_factor=4, use_aug=True)
+
+    # dataloader = DataLoader(dataset, batch_size=len(dataset), num_workers=4)
+    # data = next(iter(dataloader))
+    # print(len(data))
+    # print(data[1].shape)
+    # data = data[1].permute(1,0,2,3).reshape((3,-1))
+    # mean = data.mean(dim=1)
+    # std = data.std(dim=1)
+    # print('Mean:',mean,'Std:', std)
