@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir, crop_size=cfg.TRAIN.crop_size,
                                        upscale_factor=cfg.TRAIN.upscale_factor, use_aug=cfg.TRAIN.use_aug)
-    val_set = ValDatasetFromFolder(cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor,crop_size=cfg.TRAIN.crop_size)
+    val_set = ValDatasetFromFolder(cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor, crop_size=cfg.TRAIN.crop_size)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
@@ -68,11 +68,13 @@ if __name__ == '__main__':
     else:
         print('Not using a segmentation module')
 
-    generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc)
+    generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.loss_factor)
 
     if cfg.TRAIN.use_pretrained_sr:
-        netG.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
-        netD.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
+        netG.load_state_dict(torch.load(
+            f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
+        netD.load_state_dict(torch.load(
+            f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
 
     if torch.cuda.is_available():
         netG.cuda()
@@ -83,11 +85,13 @@ if __name__ == '__main__':
             pass
         generator_criterion.cuda()
 
-    optimizerG = optim.Adam(netG.parameters())
-    optimizerD = optim.Adam(netD.parameters())
+    optimizerG = optim.Adam(netG.parameters(), lr=cfg.TRAIN.lr)
+    optimizerD = optim.Adam(netD.parameters(), lr=cfg.TRAIN.lr)
 
-    schedulerG = optim.lr_scheduler.MultiStepLR(optimizerG, cfg.TRAIN.scheduler_milestones, cfg.TRAIN.scheduler_gamma)
-    schedulerD = optim.lr_scheduler.MultiStepLR(optimizerD, cfg.TRAIN.scheduler_milestones, cfg.TRAIN.scheduler_gamma)
+    schedulerG = optim.lr_scheduler.MultiStepLR(
+        optimizerG, cfg.TRAIN.scheduler_milestones, cfg.TRAIN.scheduler_gamma)
+    schedulerD = optim.lr_scheduler.MultiStepLR(
+        optimizerD, cfg.TRAIN.scheduler_milestones, cfg.TRAIN.scheduler_gamma)
 
     results = {'d_loss': [], 'g_loss': [], 'd_score': [],
                'g_score': [], 'psnr': [], 'ssim': []}
@@ -136,7 +140,8 @@ if __name__ == '__main__':
 
             netG.zero_grad()
 
-            _use_seg = True if (cfg.TRAIN.use_seg and float(epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
+            _use_seg = True if (cfg.TRAIN.use_seg and float(
+                epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
             if _use_seg and cfg.TRAIN.arch_enc == 'hrnet':
                 feed = {
                     'img_data': fake_img,

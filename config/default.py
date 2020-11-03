@@ -23,11 +23,19 @@ _C.TRAIN.batch_size = 10
 _C.TRAIN.crop_size = 256
 _C.TRAIN.visualize = False
 _C.TRAIN.upscale_factor = 4
+_C.TRAIN.lr = 1e-3
 _C.TRAIN.model_save_path = 'epochs/'
 _C.TRAIN.model_name = 'model'
 _C.TRAIN.use_aug = None
 _C.TRAIN.scheduler_milestones = None
 _C.TRAIN.scheduler_gamma = None
+
+_C.TRAIN.loss_factor = CN()
+_C.TRAIN.loss_factor.il = 1.0
+_C.TRAIN.loss_factor.adv = 0.001
+_C.TRAIN.loss_factor.per = 0.006
+_C.TRAIN.loss_factor.tv = 2e-8
+_C.TRAIN.loss_factor.seg = 1e-3
 
 _C.VAL = CN()
 _C.VAL.batch_size = 5

@@ -4,7 +4,7 @@ from torchvision.models.vgg import vgg16
 
 
 class GeneratorLoss(nn.Module):
-    def __init__(self, seg='hrnet'):
+    def __init__(self, loss_factor, seg='hrnet'):
         super(GeneratorLoss, self).__init__()
         vgg = vgg16(pretrained=True)
         loss_network = nn.Sequential(*list(vgg.features)[:31]).eval()
@@ -14,6 +14,7 @@ class GeneratorLoss(nn.Module):
         self.mse_loss = nn.MSELoss()
         self.tv_loss = TVLoss()
         self.seg_loss = getSegLoss(seg)
+        self.lf = loss_factor
 
     def forward(self, out_labels, out_images, target_images, seg_label=None, seg_pred=None, use_seg=True):
         # Adversarial Loss
@@ -32,7 +33,12 @@ class GeneratorLoss(nn.Module):
             "tv_loss": tv_loss.item(),
             "seg_loss": seg_loss.item()
         }
-        return image_loss + 0.001 * adversarial_loss + 0.006 * perception_loss + 2e-8 * tv_loss + 0.001 * seg_loss, losses
+        return self.lf.il * image_loss + \
+            self.lf.adv * adversarial_loss + \
+            self.lf.per * perception_loss + \
+            self.lf.tv * tv_loss + \
+            self.lf.seg * seg_loss, \
+            losses
 
 
 class TVLoss(nn.Module):
