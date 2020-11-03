@@ -10,7 +10,7 @@ from torch.utils.data.dataset import Dataset
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize, Normalize
 import albumentations as alb
-from albumentations.pytorch import ToTensorV2, ToTensor
+from albumentations.pytorch import ToTensorV2
 
 
 aug_train = alb.Compose([
@@ -82,7 +82,6 @@ class TrainDatasetFromFolder(Dataset):
 
     def __len__(self):
         return len(self.image_filenames)
-
 
 class ValDatasetFromFolder(Dataset):
     def __init__(self, dataset_dir, upscale_factor, crop_size):

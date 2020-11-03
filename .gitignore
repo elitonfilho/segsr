@@ -2,6 +2,7 @@ __pycache__
 data/
 training_results/
 epochs/
+results/
 *.png
 *.aux.xml
 

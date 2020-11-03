@@ -12,7 +12,7 @@ from models.model_sr import Generator
 parser = argparse.ArgumentParser(description='Test Single Image')
 parser.add_argument('--upscale_factor', default=4, type=int, help='super resolution upscale factor')
 parser.add_argument('--test_mode', default='GPU', type=str, choices=['GPU', 'CPU'], help='using GPU or CPU')
-parser.add_argument('--image_name', type=str, help='test low resolution image name', default='data/LR/2953-3-SO_0_LR.png')
+parser.add_argument('--image_name', type=str, help='test low resolution image name', default='data/LR/2953-3-SO_1_LR.png')
 parser.add_argument('--model_name', default='200_noseg_encoder.pth', type=str, help='generator model epoch name')
 opt = parser.parse_args()
 
@@ -36,4 +36,4 @@ if TEST_MODE:
 out = model(image)
 print(out.shape)
 out_img = ToPILImage()(out[0].data.cpu())
-out_img.save('lr.png')
+out_img.save('stest1.png')

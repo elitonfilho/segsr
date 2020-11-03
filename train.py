@@ -86,6 +86,9 @@ if __name__ == '__main__':
     optimizerG = optim.Adam(netG.parameters())
     optimizerD = optim.Adam(netD.parameters())
 
+    schedulerG = optim.lr_scheduler.MultiStepLR(optimizerG, cfg.TRAIN.scheduler_milestones, cfg.TRAIN.scheduler_gamma)
+    schedulerD = optim.lr_scheduler.MultiStepLR(optimizerD, cfg.TRAIN.scheduler_milestones, cfg.TRAIN.scheduler_gamma)
+
     results = {'d_loss': [], 'g_loss': [], 'd_score': [],
                'g_score': [], 'psnr': [], 'ssim': []}
 
@@ -125,6 +128,7 @@ if __name__ == '__main__':
             d_loss.backward(retain_graph=True)
 
             optimizerD.step()
+            schedulerD.step()
 
             ############################
             # (2) Update G network: minimize 1-D(G(z)) + Perception Loss + Image Loss + TV Loss
@@ -157,6 +161,7 @@ if __name__ == '__main__':
             fake_out = netD(fake_img).mean()
 
             optimizerG.step()
+            schedulerG.step()
 
             # loss for current batch before optimization
             running_results['g_loss'] += g_loss.item() * batch_size

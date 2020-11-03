@@ -12,9 +12,11 @@ _C.DATASET.n_classes = 5
 
 _C.TRAIN = CN()
 _C.TRAIN.use_seg = True
+_C.TRAIN.arch_enc = 'hrnet'
+_C.TRAIN.use_pretrained_seg = True
+_C.TRAIN.path_pretrained_seg = ''
 _C.TRAIN.use_pretrained_sr = False
 _C.TRAIN.path_pretrained_sr = ''
-_C.TRAIN.arch_enc = 'hrnet'
 _C.TRAIN.begin_seg = 0.7
 _C.TRAIN.num_epochs = 100
 _C.TRAIN.batch_size = 10
@@ -24,6 +26,8 @@ _C.TRAIN.upscale_factor = 4
 _C.TRAIN.model_save_path = 'epochs/'
 _C.TRAIN.model_name = 'model'
 _C.TRAIN.use_aug = None
+_C.TRAIN.scheduler_milestones = None
+_C.TRAIN.scheduler_gamma = None
 
 _C.VAL = CN()
 _C.VAL.batch_size = 5
