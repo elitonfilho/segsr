@@ -22,6 +22,29 @@ from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
 from models.model_unet_resnet import UNetResNet
 from models.model_unet import UNet
 
+def build_models(cfg):
+    netG = Generator(cfg.TRAIN.upscale_factor)
+    netD = Discriminator()
+    if cfg.TRAIN.arch_enc == 'hrnet':
+        # TODO: Better organize load_state_dict on HRNet
+        netSeg = SegmentationModule(net_enc=getHrnetv2(cfg.DATASET.n_classes),
+                                    net_dec=getC1(cfg.DATASET.n_classes),
+                                    crit=nn.NLLLoss(ignore_index=1))
+    elif cfg.TRAIN.arch_enc == 'unet':
+        netSeg = UNetResNet(num_classes=cfg.DATASET.n_classes)
+    else:
+        netSeg = None
+        print('Not using a segmentation module')
+
+    if cfg.TRAIN.use_pretrained_sr:
+        netG.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
+        netD.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
+
+    if cfg.TRAIN.use_pretrained_seg:
+        netSeg.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_seg}.pth'), strict=False)
+
+    return netG, netD, netSeg
+
 
 if __name__ == '__main__':
 
@@ -56,32 +79,16 @@ if __name__ == '__main__':
     val_loader = DataLoader(dataset=val_set, num_workers=4,
                             batch_size=cfg.VAL.batch_size, shuffle=False)
 
-    netG = Generator(cfg.TRAIN.upscale_factor)
-    netD = Discriminator()
-    if cfg.TRAIN.arch_enc == 'hrnet':
-        netSeg = SegmentationModule(net_enc=getHrnetv2(cfg.DATASET.n_classes),
-                                    net_dec=getC1(cfg.DATASET.n_classes),
-                                    crit=nn.NLLLoss(ignore_index=1))
-    elif cfg.TRAIN.arch_enc == 'unet':
-        netSeg = UNetResNet(num_classes=cfg.DATASET.n_classes)
-        netSeg.load_state_dict(torch.load(f'epochs/unet-resnet-100'), strict=False)
-    else:
-        print('Not using a segmentation module')
+    netG, netD, netSeg = build_models(cfg)
 
     generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.loss_factor)
-
-    if cfg.TRAIN.use_pretrained_sr:
-        netG.load_state_dict(torch.load(
-            f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
-        netD.load_state_dict(torch.load(
-            f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
 
     if torch.cuda.is_available():
         netG.cuda()
         netD.cuda()
         try:
             netSeg.cuda()
-        except NameError:
+        except (NameError, AttributeError):
             pass
         generator_criterion.cuda()
 
@@ -109,22 +116,24 @@ if __name__ == '__main__':
         except NameError:
             pass
 
-        for index, (data, target, label) in enumerate(train_bar):
-            batch_size = data.size(0)
+        for index, (lr, hr, label) in enumerate(train_bar):
+            batch_size = lr.size(0)
             running_results['batch_sizes'] += batch_size
 
             ############################
-            # (1) Update D network: maximize D(x)-1-D(G(z))
+            # (1) Update D network: maximize D(x) + 1-D(G(z))
             ###########################
 
-            real_img = target.float()
             if torch.cuda.is_available():
-                real_img = real_img.cuda()
-            z = data.float()
-            if torch.cuda.is_available():
-                z = z.cuda()
-            fake_img = netG(z)
-            label = label.cuda().long()
+                hr = hr.cuda()
+                lr = lr.cuda()
+                label = label.cuda()
+
+            real_img = hr.float()
+            lr = lr.float()
+            label = label.long()
+
+            fake_img = netG(lr)
             netD.zero_grad()
             real_out = netD(real_img).mean()
             fake_out = netD(fake_img).mean()
@@ -139,6 +148,8 @@ if __name__ == '__main__':
             ###########################
 
             netG.zero_grad()
+
+            # TODO: Use D to calculate adversarial loss, not from a pretrained vgg
 
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
@@ -162,7 +173,7 @@ if __name__ == '__main__':
 
             g_loss.backward()
 
-            fake_img = netG(z)
+            fake_img = netG(lr)
             fake_out = netD(fake_img).mean()
 
             optimizerG.step()
