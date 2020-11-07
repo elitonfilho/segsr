@@ -92,9 +92,9 @@ class ValDatasetFromFolder(Dataset):
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
 
     def __getitem__(self, index):
-        hr_image = np.asarray(Image.open(self.image_filenames[index]), dtype=np.uint8)
+        hr_image = np.array(Image.open(self.image_filenames[index]), dtype=np.uint8)
         size_hr = hr_image.shape[:2]
-        seg_img = np.asarray(get_seg_img(self.image_filenames[index]), dtype=np.long)
+        seg_img = np.array(get_seg_img(self.image_filenames[index]), dtype=np.long)
         lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
         hr_restore_img = cv2.resize(lr_image, dsize=size_hr, interpolation=cv2.INTER_CUBIC)
         return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image), torch.tensor(seg_img, dtype=torch.long)
