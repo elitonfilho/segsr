@@ -207,7 +207,7 @@ if __name__ == '__main__':
                 running_results['tv'] / running_results['batch_sizes'],
             ))
 
-        if cfg.TRAIN.visualize:
+        if cfg.TRAIN.visualize and epoch % cfg.VAL.freq == 0:
             netG.eval()
             out_path = 'results/train_' + str(cfg.TRAIN.model_name) + '/'
             if not os.path.exists(out_path):

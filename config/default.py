@@ -40,6 +40,7 @@ _C.TRAIN.loss_factor.seg = 1e-3
 _C.VAL = CN()
 _C.VAL.batch_size = 5
 _C.VAL.n_rows = 5
+_C.VAL.freq = 10
 
 _C.TEST = CN()
 _C.TEST.batch_size = 1
