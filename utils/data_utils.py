@@ -78,7 +78,7 @@ class TrainDatasetFromFolder(Dataset):
             return lr_image, hr_image, seg_image
         elif not self.aug:
             # TODO: normalize
-            return ToTensor()(lr_image), ToTensor()(hr_image), torch.from_numpy(seg_image)
+            return ToTensor()(lr_image), ToTensor()(hr_image), torch.tensor(seg_image, dtype=torch.int32)
 
     def __len__(self):
         return len(self.image_filenames)

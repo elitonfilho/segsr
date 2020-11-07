@@ -6,11 +6,11 @@ import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from shutil import copy
+from pathlib import Path
 
 import torch
-import torch.nn as nn
+import torchvision
 import torch.optim as optim
-import torchvision.utils as utils
 from torch.tensor import Tensor
 from torch.utils.data import DataLoader
 from config import cfg
@@ -139,8 +139,8 @@ if __name__ == '__main__':
             netD.zero_grad()
             real_out = netD(real_img).mean()
             fake_out = netD(fake_img).mean()
-            # Use mean() before d_loss
-            d_loss = -(torch.log(real_out) + torch.log(1-fake_out))
+            d_loss = 1 - real_out + fake_out
+            # d_loss = -(torch.log(real_out) + torch.log(1-fake_out)) is ideal, but D=1 means loss=inf
             d_loss.backward(retain_graph=True)
 
             optimizerD.step()
@@ -190,8 +190,6 @@ if __name__ == '__main__':
             running_results['img'] += losses['image_loss'] * batch_size
             running_results['per'] += losses['perception_loss'] * batch_size
             running_results['tv'] += losses['tv_loss'] * batch_size
-            # running_results['SL'] += _sl.item() * batch_size if SEG == 'hrnet' else _0
-            # running_results['SL'] += 0
 
             train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f \
             Seg: %.4f Adv: %.4f  Img: %.4f  Per: %.4f Tv: %.4f' % (
@@ -208,11 +206,12 @@ if __name__ == '__main__':
             ))
 
         if cfg.TRAIN.visualize and epoch % cfg.VAL.freq == 0:
+
             netG.eval()
+
             out_path = 'results/train_' + str(cfg.TRAIN.model_name) + '/'
             if not os.path.exists(out_path):
                 os.makedirs(out_path)
-            copy(args.cfg, f'{cfg.TRAIN.model_save_path}config.yaml')
 
             with torch.no_grad():
                 val_bar = tqdm(val_loader)
@@ -247,13 +246,16 @@ if __name__ == '__main__':
                 val_save_bar = tqdm(val_images, desc='[saving training results]')
                 index = 0
                 for image in val_save_bar:
-                    image = utils.make_grid(image, nrow=3, padding=2)
-                    utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' %
+                    image = torchvision.utils.make_grid(image, nrow=3, padding=2)
+                    torchvision.utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' %
                                      (epoch, index), padding=5)
                     index += 1
 
-        # save model parameters
+        # save model parameters and configs for current run
         if epoch == cfg.TRAIN.num_epochs:
+            path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
+            path_save_model.mkdir(exist_ok=True)
+            copy(args.cfg, path_save_model / 'config.yaml')
             torch.save(netG.state_dict(),
                        f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
             torch.save(netD.state_dict(),
