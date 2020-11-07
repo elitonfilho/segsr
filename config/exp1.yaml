@@ -1,7 +1,7 @@
 DATASET:
-  train_dir: 'data/train'
-  val_dir: 'data/val'
-  seg_dir: 'data/annotation'
+  train_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\hr'
+  val_dir: 'C:\Users\Eliton\Documents\master\unet\data\val\hr'
+  seg_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\annotation'
   n_classes: 4
 
 TRAIN:
@@ -36,4 +36,7 @@ VAL:
 
 TEST:
   batch_size: 1
-  path_encoder: "epochs/"
+  upscale_factor: 4
+  path_encoder: 'epochs/200_noseg_encoder.pth'
+  path_image: 'data/LR/2953-3-SO_1_LR.png'
+  path_save: 'results/test'

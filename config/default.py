@@ -44,4 +44,6 @@ _C.VAL.n_rows = 5
 _C.TEST = CN()
 _C.TEST.batch_size = 1
 _C.TEST.path_encoder = 'epochs/encoder.pth'
-_C.TEST.path_decoder = 'epochs/decoder.pth'
+_C.TEST.upscale_factor = 4
+_C.TEST.path_image = 'data/test'
+_C.TEST.path_save = 'results/'

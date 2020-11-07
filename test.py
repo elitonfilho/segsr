@@ -1,5 +1,6 @@
 import argparse
 import time
+from pathlib import Path
 
 import torch
 from torch.tensor import Tensor
@@ -7,33 +8,55 @@ from PIL import Image
 from torch.autograd import Variable
 from torchvision.transforms import ToTensor, ToPILImage
 
+from config import cfg
 from models.model_sr import Generator
 
-parser = argparse.ArgumentParser(description='Test Single Image')
-parser.add_argument('--upscale_factor', default=4, type=int, help='super resolution upscale factor')
-parser.add_argument('--test_mode', default='GPU', type=str, choices=['GPU', 'CPU'], help='using GPU or CPU')
-parser.add_argument('--image_name', type=str, help='test low resolution image name', default='data/LR/2953-3-SO_1_LR.png')
-parser.add_argument('--model_name', default='200_noseg_encoder.pth', type=str, help='generator model epoch name')
-opt = parser.parse_args()
+if __name__ == "__main__":
 
-UPSCALE_FACTOR = opt.upscale_factor
-TEST_MODE = True if opt.test_mode == 'GPU' else False
-IMAGE_NAME = opt.image_name
-MODEL_NAME = opt.model_name
+    parser = argparse.ArgumentParser(
+        description='Tesr Super Resolution Models')
 
-model = Generator(UPSCALE_FACTOR).eval()
-if TEST_MODE:
-    model.cuda()
-    model.load_state_dict(torch.load('epochs/' + MODEL_NAME))
-else:
-    model.load_state_dict(torch.load('epochs/' + MODEL_NAME, map_location=lambda storage, loc: storage))
+    parser.add_argument(
+        "--cfg",
+        default="config/exp1.yaml",
+        metavar="FILE",
+        help="path to config file",
+        type=str,
+    )
 
-image = Image.open(IMAGE_NAME)
-image = ToTensor()(image).unsqueeze(0)
-if TEST_MODE:
-    image = image.cuda()
+    parser.add_argument(
+        "opts",
+        help="Modify config options using the command-line",
+        default=None,
+        nargs=argparse.REMAINDER,
+    )
 
-out = model(image)
-print(out.shape)
-out_img = ToPILImage()(out[0].data.cpu())
-out_img.save('stest1.png')
+    args = parser.parse_args()
+    cfg.merge_from_file(args.cfg)
+    cfg.merge_from_list(args.opts)
+
+    model = Generator(cfg.TEST.upscale_factor).eval()
+    save_dir = Path(cfg.TEST.path_save).resolve()
+    save_dir.mkdir(exists_ok=True)
+
+    if torch.cuda.is_available():
+        model.cuda()
+        model.load_state_dict(torch.load(cfg.TEST.path_encoder))
+    else:
+        model.load_state_dict(torch.load(cfg.TEST.path_encoder, map_location=lambda storage, loc: storage))
+
+    path_img = Path(cfg.TEST.path_image)
+    if Path(path_img).is_file():
+        p_imgs =  [path_img]
+    else:
+        p_imgs = [path_img / x for x in path_img.iterdir()]
+
+    for p_img in p_imgs:
+        _img = Image.open(p_img)
+        _img = ToTensor()(_img).unssqueeze(0)
+        if torch.cuda.is_available():
+            _img.cuda()
+        output = model(_img)
+        output = ToPILImage()(output[0].data.cpu())
+        output.save( save_dir / p_img.name)
+        print(f'Eval of image {p_img.stem} done.')

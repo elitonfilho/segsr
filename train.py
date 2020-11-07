@@ -5,6 +5,7 @@ import yaml
 import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from shutil import copy
 
 import torch
 import torch.nn as nn
@@ -122,6 +123,7 @@ if __name__ == '__main__':
 
             ############################
             # (1) Update D network: maximize D(x) + 1-D(G(z))
+            # TODO: As proposed in https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html, optimize D in two steps
             ###########################
 
             if torch.cuda.is_available():
@@ -137,7 +139,8 @@ if __name__ == '__main__':
             netD.zero_grad()
             real_out = netD(real_img).mean()
             fake_out = netD(fake_img).mean()
-            d_loss = 1 - real_out + fake_out
+            # Use mean() before d_loss
+            d_loss = -(torch.log(real_out) + torch.log(1-fake_out))
             d_loss.backward(retain_graph=True)
 
             optimizerD.step()
@@ -148,8 +151,6 @@ if __name__ == '__main__':
             ###########################
 
             netG.zero_grad()
-
-            # TODO: Use D to calculate adversarial loss, not from a pretrained vgg
 
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
@@ -211,6 +212,7 @@ if __name__ == '__main__':
             out_path = 'results/train_' + str(cfg.TRAIN.model_name) + '/'
             if not os.path.exists(out_path):
                 os.makedirs(out_path)
+            copy(args.cfg, f'{cfg.TRAIN.model_save_path}config.yaml')
 
             with torch.no_grad():
                 val_bar = tqdm(val_loader)

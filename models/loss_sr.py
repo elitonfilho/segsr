@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from torchvision.models.vgg import vgg16
 
+# TODO: Provide other criterions for image loss
+# TODO: Use a pre-trained vgg network based on our dataset
 
 class GeneratorLoss(nn.Module):
     def __init__(self, loss_factor, seg='hrnet'):
