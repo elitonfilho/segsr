@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 from config import cfg
 from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
 from utils import pytorch_ssim
-from models.loss_sr import GeneratorLoss
+from models.loss_sr import GeneratorLoss, criterionD
 from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
 from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
@@ -114,7 +114,7 @@ if __name__ == '__main__':
         netD.train()
         try:
             netSeg.eval()
-        except NameError:
+        except (NameError, AttributeError):
             pass
 
         for index, (lr, hr, label) in enumerate(train_bar):
@@ -137,11 +137,16 @@ if __name__ == '__main__':
 
             fake_img = netG(lr)
             netD.zero_grad()
-            real_out = netD(real_img).mean()
-            fake_out = netD(fake_img).mean()
-            d_loss = 1 - real_out + fake_out
+            # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
+            real_out = netD(real_img)
+            d_real_out = criterionD(real_out, True)
+            d_real_out.backward(retain_graph=True)
+            fake_out = netD(fake_img)
+            d_fake_out = criterionD(fake_out, False)
+            d_fake_out.backward(retain_graph=True)
             # d_loss = -(torch.log(real_out) + torch.log(1-fake_out)) is ideal, but D=1 means loss=inf
-            d_loss.backward(retain_graph=True)
+            # d_loss = 1 - real_out + fake_out
+            # d_loss.backward(retain_graph=True)
 
             optimizerD.step()
             schedulerD.step()
@@ -182,8 +187,10 @@ if __name__ == '__main__':
 
             # loss for current batch before optimization
             running_results['g_loss'] += g_loss.item() * batch_size
-            running_results['d_loss'] += d_loss.item() * batch_size
-            running_results['d_score'] += real_out.item() * batch_size
+            # running_results['d_loss'] += d_loss.item() * batch_size
+            running_results['d_loss'] += (d_real_out.item() + d_fake_out.item()) * batch_size / 2
+            # running_results['d_score'] += real_out.item() * batch_size
+            running_results['d_score'] += real_out.mean().item() * batch_size
             running_results['g_score'] += fake_out.item() * batch_size
             running_results['seg'] += losses['seg_loss'] * batch_size
             running_results['adv'] += losses['adversarial_loss'] * batch_size

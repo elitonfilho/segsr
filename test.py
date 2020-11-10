@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     model = Generator(cfg.TEST.upscale_factor).eval()
     save_dir = Path(cfg.TEST.path_save).resolve()
-    save_dir.mkdir(exists_ok=True)
+    save_dir.mkdir(exist_ok=True)
 
     if torch.cuda.is_available():
         model.cuda()
@@ -53,9 +53,9 @@ if __name__ == "__main__":
 
     for p_img in p_imgs:
         _img = Image.open(p_img)
-        _img = ToTensor()(_img).unssqueeze(0)
+        _img = ToTensor()(_img).unsqueeze(0)
         if torch.cuda.is_available():
-            _img.cuda()
+            _img = _img.cuda()
         output = model(_img)
         output = ToPILImage()(output[0].data.cpu())
         output.save( save_dir / p_img.name)

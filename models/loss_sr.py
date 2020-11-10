@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torch.nn import functional
 from torchvision.models.vgg import vgg16
 
 # TODO: Provide other criterions for image loss
@@ -33,7 +34,7 @@ class GeneratorLoss(nn.Module):
             "adversarial_loss": adversarial_loss.item(),
             "perception_loss":perception_loss.item(),
             "tv_loss": tv_loss.item(),
-            "seg_loss": seg_loss.item()
+            "seg_loss": seg_loss.item() if use_seg else 0
         }
         return self.lf.il * image_loss + \
             self.lf.adv * adversarial_loss + \
@@ -94,6 +95,11 @@ def getSegLoss(loss):
     else:
         return None
 
+def criterionD(inp, real=True):
+    if real:
+        return functional.binary_cross_entropy_with_logits(inp, torch.ones(inp.shape).cuda())
+    else:
+        return functional.binary_cross_entropy_with_logits(inp, torch.zeros(inp.shape).cuda())
 
 if __name__ == "__main__":
     g_loss = GeneratorLoss()
