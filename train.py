@@ -149,7 +149,6 @@ if __name__ == '__main__':
             # d_loss.backward(retain_graph=True)
 
             optimizerD.step()
-            schedulerD.step()
 
             ############################
             # (2) Update G network: minimize 1-D(G(z)) + Perception Loss + Image Loss + TV Loss
@@ -183,7 +182,6 @@ if __name__ == '__main__':
             fake_out = netD(fake_img).mean()
 
             optimizerG.step()
-            schedulerG.step()
 
             # loss for current batch before optimization
             running_results['g_loss'] += g_loss.item() * batch_size
@@ -258,15 +256,19 @@ if __name__ == '__main__':
                                      (epoch, index), padding=5)
                     index += 1
 
+        schedulerD.step()
+        schedulerG.step()
+
         # save model parameters and configs for current run
-        if epoch == cfg.TRAIN.num_epochs:
+        if cfg.TRAIN.model_save_path:
             path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
             path_save_model.mkdir(exist_ok=True)
             copy(args.cfg, path_save_model / 'config.yaml')
-            torch.save(netG.state_dict(),
-                       f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
-            torch.save(netD.state_dict(),
-                       f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_decoder.pth')
+            if epoch == cfg.TRAIN.num_epochs:
+                torch.save(netG.state_dict(),
+                            f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
+                torch.save(netD.state_dict(),
+                            f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_decoder.pth')
         # save loss\scores\psnr\ssim
         # results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         # results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
