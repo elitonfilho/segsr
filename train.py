@@ -197,7 +197,7 @@ if __name__ == '__main__':
             running_results['tv'] += losses['tv_loss'] * batch_size
 
             train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f \
-            Seg: %.4f Adv: %.4f  Img: %.4f  Per: %.4f Tv: %.4f' % (
+            Seg: %.4f Adv: %.4f  Img: %.4f  Per: %.4f Tv: %.4f LR: %f' % (
                 epoch, cfg.TRAIN.num_epochs,
                 running_results['d_loss'] / running_results['batch_sizes'],
                 running_results['g_loss'] / running_results['batch_sizes'],
@@ -208,6 +208,7 @@ if __name__ == '__main__':
                 running_results['img'] / running_results['batch_sizes'],
                 running_results['per'] / running_results['batch_sizes'],
                 running_results['tv'] / running_results['batch_sizes'],
+                schedulerG.get_last_lr()
             ))
 
         if cfg.TRAIN.visualize and epoch % cfg.VAL.freq == 0:
