@@ -208,7 +208,7 @@ if __name__ == '__main__':
                 running_results['img'] / running_results['batch_sizes'],
                 running_results['per'] / running_results['batch_sizes'],
                 running_results['tv'] / running_results['batch_sizes'],
-                schedulerG.get_last_lr()
+                schedulerG.get_last_lr()[0]
             ))
 
         if cfg.TRAIN.visualize and epoch % cfg.VAL.freq == 0:
@@ -261,7 +261,7 @@ if __name__ == '__main__':
         schedulerG.step()
 
         # save model parameters and configs for current run
-        if cfg.TRAIN.model_save_path and epoch == 0:
+        if cfg.TRAIN.model_save_path and epoch == 1:
             path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
             path_save_model.mkdir(exist_ok=True)
             copy(args.cfg, path_save_model / 'config.yaml')
