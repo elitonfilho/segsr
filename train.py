@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 from config import cfg
 from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
 from utils import pytorch_ssim
-from models.loss_sr import GeneratorLoss, criterionD
+from models.loss_sr import GeneratorLoss, criterion
 from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
 from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
@@ -139,10 +139,10 @@ if __name__ == '__main__':
             netD.zero_grad()
             # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
             real_out = netD(real_img)
-            d_real_out = criterionD(real_out, True)
+            d_real_out = criterion(real_out, True)
             d_real_out.backward(retain_graph=True)
             fake_out = netD(fake_img)
-            d_fake_out = criterionD(fake_out, False)
+            d_fake_out = criterion(fake_out, False)
             d_fake_out.backward(retain_graph=True)
             # d_loss = -(torch.log(real_out) + torch.log(1-fake_out)) is ideal, but D=1 means loss=inf
             # d_loss = 1 - real_out + fake_out
@@ -151,10 +151,11 @@ if __name__ == '__main__':
             optimizerD.step()
 
             ############################
-            # (2) Update G network: minimize 1-D(G(z)) + Perception Loss + Image Loss + TV Loss
+            # (2) Update G network: minimize 1-D(G(z)) + Losses
             ###########################
 
             netG.zero_grad()
+            fake_out = netD(fake_img)
 
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
@@ -178,17 +179,17 @@ if __name__ == '__main__':
 
             g_loss.backward()
 
-            fake_img = netG(lr)
-            fake_out = netD(fake_img).mean()
-
             optimizerG.step()
 
-            # loss for current batch before optimization
+            fake_img = netG(lr)
+            fake_out = netD(fake_img).mean()
+            real_out = netD(real_img).mean()
+
+            # Statistics for current batch
             running_results['g_loss'] += g_loss.item() * batch_size
             # running_results['d_loss'] += d_loss.item() * batch_size
-            running_results['d_loss'] += (d_real_out.item() + d_fake_out.item()) * batch_size / 2
-            # running_results['d_score'] += real_out.item() * batch_size
-            running_results['d_score'] += real_out.mean().item() * batch_size
+            running_results['d_loss'] += (d_real_out.item() + d_fake_out.item()) * batch_size
+            running_results['d_score'] += real_out.item() * batch_size
             running_results['g_score'] += fake_out.item() * batch_size
             running_results['seg'] += losses['seg_loss'] * batch_size
             running_results['adv'] += losses['adversarial_loss'] * batch_size

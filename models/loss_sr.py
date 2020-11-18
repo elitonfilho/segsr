@@ -7,7 +7,7 @@ from torchvision.models.vgg import vgg16
 # TODO: Use a pre-trained vgg network based on our dataset
 
 class GeneratorLoss(nn.Module):
-    def __init__(self, loss_factor, seg='hrnet'):
+    def __init__(self, loss_factor, seg='unet'):
         super(GeneratorLoss, self).__init__()
         vgg = vgg16(pretrained=True)
         loss_network = nn.Sequential(*list(vgg.features)[:31]).eval()
@@ -21,7 +21,8 @@ class GeneratorLoss(nn.Module):
 
     def forward(self, out_labels, out_images, target_images, seg_label=None, seg_pred=None, use_seg=True):
         # Adversarial Loss
-        adversarial_loss = torch.mean(1 - out_labels)
+        # adversarial_loss = torch.mean(1 - out_labels)
+        adversarial_loss = criterion(out_labels, real=True)
         # Perception Loss
         perception_loss = self.mse_loss(self.loss_network(out_images), self.loss_network(target_images))
         # Image Loss
@@ -74,19 +75,6 @@ class SegLoss(nn.Module):
     def forward(self, pred, label):
         return self.CEE(pred, label)
 
-    # def forward(self, label, pred):
-    #     t_sum, t_acc = 0, 0
-    #     for i in range(pred.shape[0]):
-    #         valid = (label[i,0] >= 0)
-    #         acc_sum = (valid * (pred[i,3] == label[i,0])).sum()
-    #         # print(valid.shape, acc_sum)
-    #         valid_sum = valid.sum()
-    #         acc = float(acc_sum) / (valid_sum + 1e-10)
-    #         t_sum += valid_sum
-    #         t_acc += acc
-    #     return t_acc
-
-
 def getSegLoss(loss):
     if loss == 'hrnet':
         return SegLoss()
@@ -95,11 +83,11 @@ def getSegLoss(loss):
     else:
         return None
 
-def criterionD(inp, real=True):
+def criterion(inp, real=True):
     if real:
-        return functional.binary_cross_entropy_with_logits(inp, torch.ones(inp.shape).cuda())
+        return functional.binary_cross_entropy(inp, torch.ones(inp.shape).cuda())
     else:
-        return functional.binary_cross_entropy_with_logits(inp, torch.zeros(inp.shape).cuda())
+        return functional.binary_cross_entropy(inp, torch.zeros(inp.shape).cuda())
 
 if __name__ == "__main__":
     g_loss = GeneratorLoss()
