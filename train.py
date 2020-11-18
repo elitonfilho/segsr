@@ -260,15 +260,15 @@ if __name__ == '__main__':
         schedulerG.step()
 
         # save model parameters and configs for current run
-        if cfg.TRAIN.model_save_path:
+        if cfg.TRAIN.model_save_path and epoch == 0:
             path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
             path_save_model.mkdir(exist_ok=True)
             copy(args.cfg, path_save_model / 'config.yaml')
-            if epoch == cfg.TRAIN.num_epochs:
-                torch.save(netG.state_dict(),
-                            f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
-                torch.save(netD.state_dict(),
-                            f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_decoder.pth')
+        if epoch == cfg.TRAIN.num_epochs:
+            torch.save(netG.state_dict(),
+                        f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
+            torch.save(netD.state_dict(),
+                        f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_decoder.pth')
         # save loss\scores\psnr\ssim
         # results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         # results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
