@@ -69,10 +69,8 @@ class TrainDatasetFromFolder(Dataset):
 
     def __getitem__(self, index):
         load_img = np.load(self.image_filenames[index])['arr_0'].squeeze()
-        hr_image = load_img[0:3]
-        lr_image = cv2.resize(hr_image.transpose(1,2,0), dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
-        lr_image = lr_image.transpose(2,0,1)
-        # lr_image = functional.resize(torch.tensor(hr_image, dtype=torch.int32), self.resize_lr, interpolation=PIL.Image.BICUBIC)
+        hr_image = (load_img[0:3]).transpose(1,2,0)
+        lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
         seg_image = load_img[8]
         if self.aug:
             transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
@@ -98,10 +96,11 @@ class ValDatasetFromFolder(Dataset):
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
 
     def __getitem__(self, index):
-        hr_image = np.array(Image.open(self.image_filenames[index]), dtype=np.uint8)
+        load_img = np.load(self.image_filenames[index])['arr_0'].squeeze()
+        hr_image = (load_img[0:3]).transpose(1,2,0).astype(np.uint8)
         size_hr = hr_image.shape[:2]
-        seg_img = np.array(get_seg_img(self.image_filenames[index]), dtype=np.long)
         lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
+        seg_img = load_img[8]
         hr_restore_img = cv2.resize(lr_image, dsize=size_hr, interpolation=cv2.INTER_CUBIC)
         return ToTensor()(lr_image), ToTensor()(hr_restore_img), ToTensor()(hr_image), torch.tensor(seg_img, dtype=torch.long)
 
@@ -135,11 +134,11 @@ class TestDatasetFromFolder(Dataset):
 
 
 def debug():
-    train_set = TrainDatasetFromFolder('D:\\de_1m_2013_extended-val_patches', crop_size=256,
-                                       upscale_factor=4, use_aug=False)
-    # dev_set = ValDatasetFromFolder('data/val', crop_size=256, upscale_factor=4)
-    lr, hr, mask = train_set[0]
-    # lr, hr_restore, hr, mask = dev_set[0]
+    # train_set = TrainDatasetFromFolder('D:\\de_1m_2013_extended-val_patches', crop_size=256,
+    #                                    upscale_factor=4, use_aug=True)
+    dev_set = ValDatasetFromFolder('D:\\de_1m_2013_extended-val_patches', crop_size=256, upscale_factor=4)
+    # lr, hr, mask = train_set[0]
+    lr, hr_restore, hr, mask = dev_set[0]
     print(type(lr),lr.dtype, lr.shape)
     print(type(hr),hr.dtype, hr.shape)
     # print(type(hr_restore), hr_restore.shape)
@@ -150,7 +149,7 @@ def debug():
     # ax[1].imshow(lr)
     ax[0].imshow(lr.permute(1,2,0))
     ax[1].imshow(hr.permute(1,2,0))
-    # ax[2].imshow(hr_restore.permute(1, 2, 0))
+    # ax[3].imshow(hr_restore.permute(1, 2, 0))
     ax[2].imshow(mask)
     plt.show()
 
