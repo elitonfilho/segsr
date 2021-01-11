@@ -1,0 +1,43 @@
+DATASET:
+  train_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\hr'
+  val_dir: 'C:\Users\Eliton\Documents\master\unet\data\val\hr'
+  seg_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\annotation'
+  n_classes: 4
+
+TRAIN:
+  use_seg: True
+  arch_enc: 'unet'
+  use_pretrained_seg: True
+  path_pretrained_seg: 'epochs/unet-resnet-100'
+  use_pretrained_sr: True
+  path_pretrained_sr: 'epochs/200_noseg'
+  begin_seg: 0.
+  num_epochs: 20
+  scheduler_milestones: [50,100,150,200]
+  scheduler_gamma: 0.1
+  batch_size: 8
+  crop_size: 256
+  upscale_factor: 4
+  lr: 1e-3
+  visualize: True
+  model_save_path: 'epochs/'
+  model_name: 'teste_seg'
+  use_aug: True
+  loss_factor: 
+    il: 1.0
+    adv: 0.001
+    per: 0.006
+    tv: 2e-8
+    seg: 1e-3
+
+VAL:
+  batch_size: 1
+  freq: 10
+  n_rows: 3
+
+TEST:
+  batch_size: 1
+  upscale_factor: 4
+  path_encoder: 'epochs/200_noseg_encoder.pth'
+  path_image: 'data/LR/2953-3-SO_1_LR.png'
+  path_save: 'results/test'

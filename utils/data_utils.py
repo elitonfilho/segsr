@@ -5,10 +5,11 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
+import PIL
 import torch
 from torch.utils.data.dataset import Dataset
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize, Normalize
+from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize, Normalize, functional
 import albumentations as alb
 from albumentations.pytorch import ToTensorV2
 
@@ -62,14 +63,17 @@ class TrainDatasetFromFolder(Dataset):
     def __init__(self, dataset_dir, crop_size, upscale_factor, use_aug=None):
         super(TrainDatasetFromFolder, self).__init__()
         self.image_filenames = [join(dataset_dir, x)
-                                for x in listdir(dataset_dir) if is_image_file(x)]
+                                for x in listdir(dataset_dir) ]
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
         self.aug = aug_train if use_aug else None
 
     def __getitem__(self, index):
-        hr_image = np.array(Image.open(self.image_filenames[index]), dtype=np.uint8)
-        lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
-        seg_image = np.array(get_seg_img(self.image_filenames[index]), dtype=np.int32)
+        load_img = np.load(self.image_filenames[index])['arr_0'].squeeze()
+        hr_image = load_img[0:3]
+        lr_image = cv2.resize(hr_image.transpose(1,2,0), dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
+        lr_image = lr_image.transpose(2,0,1)
+        # lr_image = functional.resize(torch.tensor(hr_image, dtype=torch.int32), self.resize_lr, interpolation=PIL.Image.BICUBIC)
+        seg_image = load_img[8]
         if self.aug:
             transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
             lr_image = transformed['image_lr']
@@ -78,7 +82,9 @@ class TrainDatasetFromFolder(Dataset):
             return lr_image, hr_image, seg_image
         elif not self.aug:
             # TODO: normalize
-            return ToTensor()(lr_image), ToTensor()(hr_image), torch.tensor(seg_image, dtype=torch.int32)
+            return (torch.tensor(lr_image/255.),
+            torch.tensor(hr_image/255.),
+            torch.tensor(seg_image, dtype=torch.int32))
 
     def __len__(self):
         return len(self.image_filenames)
@@ -88,7 +94,7 @@ class ValDatasetFromFolder(Dataset):
         super(ValDatasetFromFolder, self).__init__()
         self.upscale_factor = upscale_factor
         self.image_filenames = [join(dataset_dir, x)
-                                for x in listdir(dataset_dir) if is_image_file(x)]
+                                for x in listdir(dataset_dir)]
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
 
     def __getitem__(self, index):
@@ -129,22 +135,21 @@ class TestDatasetFromFolder(Dataset):
 
 
 def debug():
-    train_set = TrainDatasetFromFolder('data/train', crop_size=256,
-                                       upscale_factor=4, use_aug=True)
-    dev_set = ValDatasetFromFolder('data/val', crop_size=256,
-                                   upscale_factor=4)
-    hr, lr, mask = train_set[0]
+    train_set = TrainDatasetFromFolder('D:\\de_1m_2013_extended-val_patches', crop_size=256,
+                                       upscale_factor=4, use_aug=False)
+    # dev_set = ValDatasetFromFolder('data/val', crop_size=256, upscale_factor=4)
+    lr, hr, mask = train_set[0]
     # lr, hr_restore, hr, mask = dev_set[0]
-    print(type(hr), hr.shape)
-    print(type(lr), lr.shape)
+    print(type(lr),lr.dtype, lr.shape)
+    print(type(hr),hr.dtype, hr.shape)
     # print(type(hr_restore), hr_restore.shape)
     print(type(mask), mask.shape)
 
     fig, ax = plt.subplots(1, 3)
     # ax[0].imshow(hr.astype(np.uint8))
     # ax[1].imshow(lr)
-    ax[0].imshow(hr.permute(1,2,0))
-    ax[1].imshow(lr.permute(1,2,0))
+    ax[0].imshow(lr.permute(1,2,0))
+    ax[1].imshow(hr.permute(1,2,0))
     # ax[2].imshow(hr_restore.permute(1, 2, 0))
     ax[2].imshow(mask)
     plt.show()
@@ -152,14 +157,3 @@ def debug():
 
 if __name__ == "__main__":
     debug()
-    # dataset = TrainDatasetFromFolder('data/train', crop_size=256,
-    #                                    upscale_factor=4, use_aug=True)
-
-    # dataloader = DataLoader(dataset, batch_size=len(dataset), num_workers=4)
-    # data = next(iter(dataloader))
-    # print(len(data))
-    # print(data[1].shape)
-    # data = data[1].permute(1,0,2,3).reshape((3,-1))
-    # mean = data.mean(dim=1)
-    # std = data.std(dim=1)
-    # print('Mean:',mean,'Std:', std)
