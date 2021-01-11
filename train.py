@@ -246,10 +246,10 @@ if __name__ == '__main__':
                             valing_results['psnr'], valing_results['ssim']))
 
                     val_images.extend(
-                        [display_transform()(val_hr_restore.squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
+                        [display_transform()(val_hr_restore.data.cpu().squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
                          display_transform()(sr.data.cpu().squeeze(0))])
                 val_images = torch.stack(val_images)
-                val_images = torch.chunk(val_images, val_images.size(0) // (3*cfg.VAL.n_rows))
+                val_images = torch.chunk(val_images, 8) # 3*cfg.VAL.n_rows
                 val_save_bar = tqdm(val_images, desc='[saving training results]')
                 index = 0
                 for image in val_save_bar:
