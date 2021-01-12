@@ -1,27 +1,28 @@
 import argparse
 import os
 from math import log10
-import yaml
-import pandas as pd
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 from pathlib import Path
 
+import pandas as pd
 import torch
-import torchvision
 import torch.optim as optim
-from torch.tensor import Tensor
+import torchvision
+import yaml
 from torch.utils.data import DataLoader
+from tqdm import tqdm
+
 from config import cfg
-from utils.data_utils import TrainDatasetFromFolder, ValDatasetFromFolder, display_transform
-from utils import pytorch_ssim
 from models.loss_sr import GeneratorLoss, criterion
-from models.model_sr import Generator, Discriminator
 from models.model_hrnet import HRNet
-from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
-from models.model_unet_resnet import UNetResNet
+from models.model_sr import Discriminator, Generator
 from models.model_unet import UNet
+from models.model_unet_resnet import UNetResNet
+from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
+from utils import pytorch_ssim
+from utils.data_utils import (TrainDatasetFromFolder, ValDatasetFromFolder,
+                              display_transform)
 from utils.utils import *
+
 
 def build_models(cfg):
     netG = Generator(cfg.TRAIN.upscale_factor)
@@ -38,11 +39,13 @@ def build_models(cfg):
         print('Not using a segmentation module')
 
     if cfg.TRAIN.use_pretrained_sr:
-        netG.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
-        netD.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
+        netG.load_state_dict(torch.load(
+            f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
+        netD.load_state_dict(torch.load(
+            f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
 
     if cfg.TRAIN.use_pretrained_seg:
-        netSeg.load_state_dict(torch.load(f'{cfg.TRAIN.path_pretrained_seg}.pth'), strict=False)
+        netSeg.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_seg), strict=False)
 
     return netG, netD, netSeg
 
@@ -73,7 +76,8 @@ if __name__ == '__main__':
 
     train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir, crop_size=cfg.TRAIN.crop_size,
                                        upscale_factor=cfg.TRAIN.upscale_factor, use_aug=cfg.TRAIN.use_aug)
-    val_set = ValDatasetFromFolder(cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor, crop_size=cfg.TRAIN.crop_size)
+    val_set = ValDatasetFromFolder(
+        cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor, crop_size=cfg.TRAIN.crop_size)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
@@ -251,13 +255,13 @@ if __name__ == '__main__':
                         [display_transform()(val_hr_restore.data.cpu().squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
                          display_transform()(sr.data.cpu().squeeze(0))])
                 val_images = torch.stack(val_images)
-                val_images = torch.chunk(val_images, 8) # 3*cfg.VAL.n_rows
+                val_images = torch.chunk(val_images, 8)  # 3*cfg.VAL.n_rows
                 val_save_bar = tqdm(val_images, desc='[saving training results]')
                 index = 0
                 for image in val_save_bar:
                     image = torchvision.utils.make_grid(image, nrow=3, padding=2)
                     torchvision.utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' %
-                                     (epoch, index), padding=5)
+                                                 (epoch, index), padding=5)
                     index += 1
 
         schedulerD.step()

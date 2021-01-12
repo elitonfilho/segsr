@@ -8,7 +8,7 @@ TRAIN:
   use_seg: True
   arch_enc: 'unet'
   use_pretrained_seg: True
-  path_pretrained_seg: 'epochs/unet-resnet-100'
+  path_pretrained_seg: 'epochs/unet-resnet-100.pth'
   use_pretrained_sr: True
   path_pretrained_sr: 'epochs/200_noseg'
   begin_seg: 0.

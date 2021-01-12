@@ -1,18 +1,19 @@
 from os import listdir
 from os.path import join
 from pathlib import Path
-import numpy as np
+
+import albumentations as alb
 import cv2
 import matplotlib.pyplot as plt
-from PIL import Image
+import numpy as np
 import PIL
 import torch
-from torch.utils.data.dataset import Dataset
-from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, RandomCrop, ToTensor, ToPILImage, CenterCrop, Resize, Normalize, functional
-import albumentations as alb
 from albumentations.pytorch import ToTensorV2
-
+from PIL import Image
+from torch.utils.data import DataLoader
+from torch.utils.data.dataset import Dataset
+from torchvision.transforms import (CenterCrop, Compose, Normalize, RandomCrop,
+                                    Resize, ToPILImage, ToTensor, functional)
 
 aug_train = alb.Compose([
     alb.VerticalFlip(p=0.5),
