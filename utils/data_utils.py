@@ -19,35 +19,11 @@ aug_train = alb.Compose([
     alb.HorizontalFlip(p=0.5),
     alb.Transpose(p=0.5),
     alb.RandomRotate90(p=0.5),
-    # ToTensor(num_classes=4, sigmoid=True, normalize={
-    #     'mean': [0.1593, 0.2112, 0.1966],
-    #     'std': [0.1065, 0.0829, 0.0726]
-    # })
-    # alb.Normalize(mean=(40.6193, 53.8484, 50.1273), std=(27.1632, 21.1268, 18.5095)),
     ToTensorV2()
 ],
     additional_targets={
     'image_lr': 'image'
 })
-
-
-def is_image_file(filename):
-    return any(filename.endswith(extension) for extension in ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG'])
-
-
-def calculate_valid_crop_size(crop_size, upscale_factor):
-    return crop_size - (crop_size % upscale_factor)
-
-
-def get_seg_img(pathImageHR, val=False):
-    name = Path(pathImageHR).stem
-    pathSeg = Path(pathImageHR, '../../annotation', f'{name}.png').resolve()
-    if val:
-        return Image.open(pathImageHR)
-    else:
-        return Compose([
-            CenterCrop(256)
-        ])(Image.open(pathSeg))
 
 
 def display_transform():
@@ -63,7 +39,7 @@ class TrainDatasetFromFolder(Dataset):
     def __init__(self, dataset_dir, crop_size, upscale_factor, use_aug=None):
         super(TrainDatasetFromFolder, self).__init__()
         self.image_filenames = [join(dataset_dir, x)
-                                for x in listdir(dataset_dir)][:128]
+                                for x in listdir(dataset_dir)]
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
         self.aug = aug_train if use_aug else None
 
@@ -75,17 +51,15 @@ class TrainDatasetFromFolder(Dataset):
         lr_image = lr_image.astype(np.uint8)
         seg_image = load_img[8]
         if self.aug:
-            transformed = self.aug(image=hr_image/255.,
-                                   image_lr=lr_image/255., mask=seg_image)
+            transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
             lr_image = transformed['image_lr']
             hr_image = transformed['image']
             seg_image = transformed['mask']
-            
         elif not self.aug:
+            # TODO: normalize
             hr_image = ToTensor()(hr_image)
             lr_image = ToTensor()(lr_image)
             seg_image = torch.tensor(seg_image)
-            # TODO: normalize
             return lr_image, hr_image, seg_image
 
     def __len__(self):
@@ -97,7 +71,7 @@ class ValDatasetFromFolder(Dataset):
         super(ValDatasetFromFolder, self).__init__()
         self.upscale_factor = upscale_factor
         self.image_filenames = [join(dataset_dir, x)
-                                for x in listdir(dataset_dir)][:32]
+                                for x in listdir(dataset_dir)]
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
 
     def __getitem__(self, index):
@@ -105,19 +79,13 @@ class ValDatasetFromFolder(Dataset):
             load_img = x['arr_0'].squeeze()
         hr_image = (load_img[0:3]).transpose(1, 2, 0)
         size_hr = hr_image.shape[:2]
-        lr_image = cv2.resize(hr_image, dsize=self.resize_lr,
-                              interpolation=cv2.INTER_CUBIC)
+        lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
         seg_img = load_img[8]
-        hr_restore_img = cv2.resize(
-            lr_image, dsize=size_hr, interpolation=cv2.INTER_CUBIC)
-        lr_image = torch.tensor(
-            (lr_image/255.).transpose(2, 0, 1), dtype=torch.float32)
-        hr_restore_img = torch.tensor(
-            (hr_restore_img/255.).transpose(2, 0, 1), dtype=torch.float32)
-        hr_image = torch.tensor(
-            (hr_image/255.).transpose(2, 0, 1), dtype=torch.float32)
+        hr_restore_img = cv2.resize(lr_image, dsize=size_hr, interpolation=cv2.INTER_CUBIC)
+        lr_image = torch.tensor((lr_image/255.).transpose(2, 0, 1), dtype=torch.float32)
+        hr_restore_img = torch.tensor((hr_restore_img/255.).transpose(2, 0, 1), dtype=torch.float32)
+        hr_image = torch.tensor((hr_image/255.).transpose(2, 0, 1), dtype=torch.float32)
         seg_image = torch.tensor(seg_img, dtype=torch.long)
-        # print(lr_image.shape, hr_restore_img.shape, hr_image.shape, seg_image.shape)
         return lr_image, hr_restore_img, hr_image, seg_img
 
     def __len__(self):
