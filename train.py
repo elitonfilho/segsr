@@ -218,6 +218,7 @@ if __name__ == '__main__':
                 schedulerG.get_last_lr()[0]
             ))
 
+        # TODO: Save val stats
         if cfg.TRAIN.visualize and epoch % cfg.VAL.freq == 0:
 
             netG.eval()
@@ -267,21 +268,7 @@ if __name__ == '__main__':
         schedulerD.step()
         schedulerG.step()
 
+        save_train_stats(cfg, epoch, running_results)
+
         if epoch == cfg.TRAIN.num_epochs:
             save_model(cfg, netG, netD)
-
-        # save loss\scores\psnr\ssim
-        # results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
-        # results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
-        # results['d_score'].append(running_results['d_score'] / running_results['batch_sizes'])
-        # results['g_score'].append(running_results['g_score'] / running_results['batch_sizes'])
-        # results['psnr'].append(valing_results['psnr'])
-        # results['ssim'].append(valing_results['ssim'])
-
-        # if epoch % 10 == 0 and epoch != 0:
-        #     out_path = 'statistics/'
-        #     data_frame = pd.DataFrame(
-        #         data={'Loss_D': results['d_loss'], 'Loss_G': results['g_loss'], 'Score_D': results['d_score'],
-        #               'Score_G': results['g_score'], 'PSNR': results['psnr'], 'SSIM': results['ssim']},
-        #         index=range(1, epoch + 1))
-        #     data_frame.to_csv(out_path + 'srf_' + str(cfg.TRAIN.upscale_factor) + '_train_results.csv', index_label='Epoch')
