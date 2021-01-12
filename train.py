@@ -5,7 +5,6 @@ import yaml
 import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from shutil import copy
 from pathlib import Path
 
 import torch
@@ -22,6 +21,7 @@ from models.model_hrnet import HRNet
 from models.models_hrnetv2 import SegmentationModule, getHrnetv2, getC1
 from models.model_unet_resnet import UNetResNet
 from models.model_unet import UNet
+from utils.utils import *
 
 def build_models(cfg):
     netG = Generator(cfg.TRAIN.upscale_factor)
@@ -81,6 +81,8 @@ if __name__ == '__main__':
                             batch_size=cfg.VAL.batch_size, shuffle=False)
 
     netG, netD, netSeg = build_models(cfg)
+
+    create_pretrain_folder(args, cfg)
 
     generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.loss_factor)
 
@@ -261,16 +263,9 @@ if __name__ == '__main__':
         schedulerD.step()
         schedulerG.step()
 
-        # save model parameters and configs for current run
-        if cfg.TRAIN.model_save_path and epoch == 1:
-            path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
-            path_save_model.mkdir(exist_ok=True)
-            copy(args.cfg, path_save_model / 'config.yaml')
         if epoch == cfg.TRAIN.num_epochs:
-            torch.save(netG.state_dict(),
-                        f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_encoder.pth')
-            torch.save(netD.state_dict(),
-                        f'{cfg.TRAIN.model_save_path}{cfg.TRAIN.model_name}_decoder.pth')
+            save_model(cfg, netG, netD)
+
         # save loss\scores\psnr\ssim
         # results['d_loss'].append(running_results['d_loss'] / running_results['batch_sizes'])
         # results['g_loss'].append(running_results['g_loss'] / running_results['batch_sizes'])
