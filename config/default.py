@@ -21,7 +21,6 @@ _C.TRAIN.begin_seg = 0.7
 _C.TRAIN.num_epochs = 100
 _C.TRAIN.batch_size = 10
 _C.TRAIN.crop_size = 256
-_C.TRAIN.visualize = False
 _C.TRAIN.upscale_factor = 4
 _C.TRAIN.lr = 1e-3
 _C.TRAIN.model_save_path = 'epochs/'
@@ -38,8 +37,10 @@ _C.TRAIN.loss_factor.tv = 2e-8
 _C.TRAIN.loss_factor.seg = 1e-3
 
 _C.VAL = CN()
+_C.VAL.visualize = False
+_C.VAL.path_save = 'results/'
 _C.VAL.batch_size = 5
-_C.VAL.n_rows = 5
+_C.VAL.n_chunks = 5
 _C.VAL.freq = 10
 
 _C.TEST = CN()

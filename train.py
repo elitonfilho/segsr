@@ -219,13 +219,13 @@ if __name__ == '__main__':
             ))
 
         # TODO: Save val stats
-        if cfg.TRAIN.visualize and epoch % cfg.VAL.freq == 0:
+        if epoch % cfg.VAL.freq == 0:
 
             netG.eval()
 
-            out_path = 'results/train_' + str(cfg.TRAIN.model_name) + '/'
-            if not os.path.exists(out_path):
-                os.makedirs(out_path)
+            val_out_path = Path('results', f'val_{str(cfg.TRAIN.model_name)}').resolve()
+            if not os.path.exists(val_out_path) and cfg.VAL.visualize:
+                os.makedirs(val_out_path)
 
             with torch.no_grad():
                 val_bar = tqdm(val_loader)
@@ -249,21 +249,29 @@ if __name__ == '__main__':
                                                         (valing_results['mse'] / valing_results['batch_sizes']))
                     valing_results['ssim'] = valing_results['ssims'] / valing_results['batch_sizes']
                     val_bar.set_description(
-                        desc='[converting LR images to SR images] PSNR: %.4f dB SSIM: %.4f' % (
+                        desc='[Stats on validation set] PSNR: %.4f dB SSIM: %.4f' % (
                             valing_results['psnr'], valing_results['ssim']))
 
-                    val_images.extend(
-                        [display_transform()(val_hr_restore.data.cpu().squeeze(0)), display_transform()(hr.data.cpu().squeeze(0)),
-                         display_transform()(sr.data.cpu().squeeze(0))])
-                val_images = torch.stack(val_images)
-                val_images = torch.chunk(val_images, 8)  # 3*cfg.VAL.n_rows
-                val_save_bar = tqdm(val_images, desc='[saving training results]')
-                index = 0
-                for image in val_save_bar:
-                    image = torchvision.utils.make_grid(image, nrow=3, padding=2)
-                    torchvision.utils.save_image(image, out_path + 'val_epoch_%d_index_%d.png' %
-                                                 (epoch, index), padding=5)
-                    index += 1
+                    if cfg.VAL.visualize:
+                        val_images.extend(
+                            [display_transform()(val_hr_restore.data.cpu().squeeze(0)),
+                             display_transform()(hr.data.cpu().squeeze(0)),
+                             display_transform()(sr.data.cpu().squeeze(0))])
+
+                # Saving validation results
+                save_val_stats(cfg, epoch, valing_results)
+
+                # Saving SR images from validation set if visualize=True
+                if cfg.VAL.visualize:
+                    val_images = torch.stack(val_images)
+                    val_images = torch.chunk(val_images, cfg.VAL.n_chunks)
+                    val_save_bar = tqdm(val_images, desc='[saving training results]')
+                    index = 0
+                    for image in val_save_bar:
+                        image = torchvision.utils.make_grid(image, nrow=3, padding=2)
+                        torchvision.utils.save_image(image, val_out_path / 'val_epoch_%d_index_%d.png' %
+                                                     (epoch, index), padding=5)
+                        index += 1
 
         schedulerD.step()
         schedulerG.step()

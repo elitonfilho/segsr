@@ -18,7 +18,7 @@ def save_model(cfg, netG, netD):
 
 
 def save_train_stats(cfg, epoch, stats):
-    out_path = Path(cfg.TRAIN.model_save_path, 'stats.csv').resolve()
+    out_path = Path(cfg.TRAIN.model_save_path, 'train_stats.csv').resolve()
     data_frame = pd.DataFrame(
         data={
             'Epoch': epoch,
@@ -32,5 +32,15 @@ def save_train_stats(cfg, epoch, stats):
             'Loss_per': stats['per'] / stats['batch_sizes'],
             'Loss_seg': stats['seg'] / stats['batch_sizes'],
 
+        })
+    data_frame.to_csv(out_path, index_label='Epoch', mode='a')
+
+def save_val_stats(cfg, epoch, stats):
+    out_path = Path(cfg.TRAIN.model_save_path, 'val_stats.csv').resolve()
+    data_frame = pd.DataFrame(
+        data={
+            'Epoch': epoch,
+            'PSNR': stats['psnr'] / stats['batch_sizes'],
+            'SSIM': stats['ssim'] / stats['batch_sizes'],
         })
     data_frame.to_csv(out_path, index_label='Epoch', mode='a')

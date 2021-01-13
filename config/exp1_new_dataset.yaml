@@ -19,7 +19,6 @@ TRAIN:
   crop_size: 256
   upscale_factor: 4
   lr: 1e-3
-  visualize: True
   model_save_path: 'epochs/'
   model_name: 'teste_seg'
   use_aug: True
@@ -31,9 +30,10 @@ TRAIN:
     seg: 1e-3
 
 VAL:
+  visualize: True
   batch_size: 1
   freq: 10
-  n_rows: 3
+  n_chunks: 3
 
 TEST:
   batch_size: 1
