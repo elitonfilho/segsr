@@ -32,8 +32,8 @@ def save_train_stats(cfg, epoch, stats):
             'Loss_per': stats['per'] / stats['batch_sizes'],
             'Loss_seg': stats['seg'] / stats['batch_sizes'],
 
-        })
-    data_frame.to_csv(out_path, index_label='Epoch', mode='a')
+        }, index=[0])
+    data_frame.to_csv(out_path, index_label='Epoch', mode='a', header= not out_path.exists())
 
 def save_val_stats(cfg, epoch, stats):
     out_path = Path(cfg.TRAIN.model_save_path, 'val_stats.csv').resolve()
@@ -42,5 +42,5 @@ def save_val_stats(cfg, epoch, stats):
             'Epoch': epoch,
             'PSNR': stats['psnr'] / stats['batch_sizes'],
             'SSIM': stats['ssim'] / stats['batch_sizes'],
-        })
+        }, index=[0])
     data_frame.to_csv(out_path, index_label='Epoch', mode='a')

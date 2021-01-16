@@ -1,0 +1,57 @@
+DATASET:
+  train_dir: 'D:\\de_1m_2013_extended-val_patches'
+  val_dir: 'D:\\de_1m_2013_extended-val_patches'
+  seg_dir: ''
+  n_classes: 7
+
+ARCHS:
+  netG:
+    type: 'RRDBNet'
+    num_in_ch: 3
+    num_out_ch: 3
+    num_feat: 64
+    num_block: 23
+  netD:
+    type: 'VGG128'
+    num_in_ch: 3
+    num_feat: 64
+  netSeg:
+    type: 'UNet'
+
+TRAIN:
+  use_seg: False
+  arch_enc: ''
+  use_pretrained_seg: False
+  path_pretrained_seg: 'epochs/unet-novo-dataset'
+  use_pretrained_sr: False
+  path_pretrained_sr: 'epochs/200_noseg'
+  begin_seg: 0.
+  num_epochs: 20
+  scheduler_milestones: [50,100,150,200]
+  scheduler_gamma: 0.5
+  batch_size: 2
+  crop_size: 256
+  upscale_factor: 4
+  lr: 1e-3
+  model_save_path: 'epochs/exp1'
+  model_name: 'seg1-new-sr-only'
+  use_aug: False
+  loss_factor: 
+    il: 1.0
+    adv: 0.001
+    per: 0.006
+    tv: 2e-8
+    seg: 1e-3
+
+VAL:
+  visualize: True
+  batch_size: 1
+  freq: 5
+  n_chunks: 8
+
+TEST:
+  batch_size: 1
+  upscale_factor: 4
+  path_encoder: 'epochs/200_noseg_encoder.pth'
+  path_image: 'data/LR/2953-3-SO_1_LR.png'
+  path_save: 'results/test'

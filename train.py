@@ -162,7 +162,6 @@ if __name__ == '__main__':
             netD.zero_grad()
             # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
             real_out = netD(real_img)
-            print(real_out)
             d_real_out = criterion(real_out, True)
             d_real_out.backward(retain_graph=True)
             fake_out = netD(fake_img)

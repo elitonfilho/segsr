@@ -1,6 +1,6 @@
 from torch import nn as nn
 
-
+#TODO: Verify the necessity of sigmoid
 class VGG128(nn.Module):
     """VGG style discriminator with input size 256 x 256.
 
@@ -52,6 +52,8 @@ class VGG128(nn.Module):
         # activation function
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
+        self.sigmoid = nn.Sigmoid()
+
     def forward(self, x):
 
         feat = self.lrelu(self.conv0_0(x))
@@ -77,4 +79,4 @@ class VGG128(nn.Module):
         feat = feat.view(feat.size(0), -1)
         feat = self.lrelu(self.linear1(feat))
         out = self.linear2(feat)
-        return out
+        return self.sigmoid(out)
