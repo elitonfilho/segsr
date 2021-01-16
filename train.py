@@ -21,7 +21,7 @@ from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
 from models.arch_rrdb import RRDBNet
 from models.arch_vgg import VGG128
 
-from data.dataset_landcover import LandCoverDataset
+from data import *
 from utils import pytorch_ssim
 from utils.data_utils import display_transform
 from utils.utils import *
