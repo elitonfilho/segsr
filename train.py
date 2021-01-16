@@ -20,12 +20,15 @@ from models.model_unet_resnet import UNetResNet
 from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
 from models.arch_rrdb import RRDBNet
 from models.arch_vgg import VGG128
+
+from data.dataset_landcover import LandCoverDataset
 from utils import pytorch_ssim
-from utils.data_utils import (TrainDatasetFromFolder, ValDatasetFromFolder,
-                              display_transform)
+from utils.data_utils import display_transform
 from utils.utils import *
 
 # TODO: Dynamic instantiation
+
+
 def build_models(cfg):
     # netG = Generator(cfg.TRAIN.upscale_factor)
     # netG = Discriminator()
@@ -48,7 +51,7 @@ def build_models(cfg):
         netSeg = None
         print('Not using a segmentation module')
 
-    #TODO: Individual load paths
+    # TODO: Individual load paths
     if cfg.TRAIN.use_pretrained_sr:
         netG.load_state_dict(torch.load(
             f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
@@ -85,16 +88,17 @@ if __name__ == '__main__':
     cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
 
-    train_set = TrainDatasetFromFolder(
+    train_set = LandCoverDataset(
         cfg.DATASET.train_dir,
         crop_size=cfg.TRAIN.crop_size,
         upscale_factor=cfg.TRAIN.upscale_factor,
         use_aug=cfg.TRAIN.use_aug)
 
-    val_set = ValDatasetFromFolder(
+    val_set = LandCoverDataset(
         cfg.DATASET.val_dir,
         upscale_factor=cfg.TRAIN.upscale_factor,
-        crop_size=cfg.TRAIN.crop_size)
+        crop_size=cfg.TRAIN.crop_size,
+        use_aug=cfg.TRAIN.use_aug)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
@@ -248,7 +252,7 @@ if __name__ == '__main__':
                 val_bar = tqdm(val_loader)
                 valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
                 val_images = []
-                for val_lr, val_hr_restore, val_hr, val_seg in val_bar:
+                for val_lr, val_hr, val_seg in val_bar:
                     batch_size = val_lr.size(0)
                     valing_results['batch_sizes'] += batch_size
                     lr = val_lr
@@ -271,8 +275,7 @@ if __name__ == '__main__':
 
                     if cfg.VAL.visualize:
                         val_images.extend(
-                            [display_transform()(val_hr_restore.data.cpu().squeeze(0)),
-                             display_transform()(hr.data.cpu().squeeze(0)),
+                            [display_transform()(hr.data.cpu().squeeze(0)),
                              display_transform()(sr.data.cpu().squeeze(0))])
 
                 # Saving validation results
@@ -285,8 +288,9 @@ if __name__ == '__main__':
                     val_save_bar = tqdm(val_images, desc='[saving training results]')
                     index = 0
                     for image in val_save_bar:
-                        image = torchvision.utils.make_grid(image, nrow=3, padding=2)
-                        torchvision.utils.save_image(image, val_out_path / f'val_epoch_{epoch}_{index}.png', padding=5)
+                        image = torchvision.utils.make_grid(image, nrow=2, padding=2)
+                        torchvision.utils.save_image(
+                            image, val_out_path / f'val_epoch_{epoch}_{index}.png', padding=5)
                         index += 1
 
         schedulerD.step()

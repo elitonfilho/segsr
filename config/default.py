@@ -5,6 +5,7 @@ _C = CN()
 _C.DIR = 'results/experiment1'
 
 _C.DATASET = CN()
+_C.DATASET.type = 'cgeo'
 _C.DATASET.train_dir = 'data/train'
 _C.DATASET.val_dir = 'data/val'
 _C.DATASET.seg_dir = 'data/annotation'

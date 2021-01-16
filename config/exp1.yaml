@@ -1,4 +1,5 @@
 DATASET:
+  type: ''
   train_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\hr'
   val_dir: 'C:\Users\Eliton\Documents\master\unet\data\val\hr'
   seg_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\annotation'

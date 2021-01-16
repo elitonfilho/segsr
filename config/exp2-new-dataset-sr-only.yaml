@@ -1,4 +1,5 @@
 DATASET:
+  type: ''
   train_dir: 'D:\\de_1m_2013_extended-val_patches'
   val_dir: 'D:\\de_1m_2013_extended-val_patches'
   seg_dir: ''
