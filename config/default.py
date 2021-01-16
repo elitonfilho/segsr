@@ -10,6 +10,19 @@ _C.DATASET.val_dir = 'data/val'
 _C.DATASET.seg_dir = 'data/annotation'
 _C.DATASET.n_classes = 5
 
+_C.ARCHS = CN()
+_C.ARCHS.netG = CN()
+_C.ARCHS.netG.type = 'RRDBNet'
+_C.ARCHS.netG.num_in_ch = '3'
+_C.ARCHS.netG.num_out_ch = '3'
+_C.ARCHS.netG.num_feat = '64'
+_C.ARCHS.netG.num_block = '23'
+
+_C.ARCHS.netD = CN()
+_C.ARCHS.netD.type = 'VGG128'
+_C.ARCHS.netD.num_in_ch = '3'
+_C.ARCHS.netD.num_feat = '64'
+
 _C.TRAIN = CN()
 _C.TRAIN.use_seg = True
 _C.TRAIN.arch_enc = 'hrnet'

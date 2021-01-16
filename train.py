@@ -25,7 +25,7 @@ from utils.utils import *
 
 
 def build_models(cfg):
-    netG = Generator(cfg.TRAIN.upscale_factor)
+    # netG = Generator(cfg.TRAIN.upscale_factor)
     netD = Discriminator()
     if cfg.TRAIN.arch_enc == 'hrnet':
         # TODO: Better organize load_state_dict on HRNet
@@ -74,10 +74,16 @@ if __name__ == '__main__':
     cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
 
-    train_set = TrainDatasetFromFolder(cfg.DATASET.train_dir, crop_size=cfg.TRAIN.crop_size,
-                                       upscale_factor=cfg.TRAIN.upscale_factor, use_aug=cfg.TRAIN.use_aug)
+    train_set = TrainDatasetFromFolder(
+        cfg.DATASET.train_dir,
+        crop_size=cfg.TRAIN.crop_size,
+        upscale_factor=cfg.TRAIN.upscale_factor,
+        use_aug=cfg.TRAIN.use_aug)
+
     val_set = ValDatasetFromFolder(
-        cfg.DATASET.val_dir, upscale_factor=cfg.TRAIN.upscale_factor, crop_size=cfg.TRAIN.crop_size)
+        cfg.DATASET.val_dir,
+        upscale_factor=cfg.TRAIN.upscale_factor,
+        crop_size=cfg.TRAIN.crop_size)
 
     train_loader = DataLoader(dataset=train_set, num_workers=4,
                               batch_size=cfg.TRAIN.batch_size, shuffle=True)
