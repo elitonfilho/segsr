@@ -4,6 +4,20 @@ DATASET:
   seg_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\annotation'
   n_classes: 4
 
+ARCHS:
+  netG:
+    type: 'RRDBNet'
+    num_in_ch: 3
+    num_out_ch: 3
+    num_feat: 64
+    num_block: 23
+  netD:
+    type: 'VGG128'
+    num_in_ch: 3
+    num_feat: 64
+  netSeg:
+    type: 'UNet'
+
 TRAIN:
   use_seg: True
   arch_enc: 'unet'

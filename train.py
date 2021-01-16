@@ -18,15 +18,25 @@ from models.model_sr import Discriminator, Generator
 from models.model_unet import UNet
 from models.model_unet_resnet import UNetResNet
 from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
+from models.arch_rrdb import RRDBNet
+from models.arch_vgg import VGG128
 from utils import pytorch_ssim
 from utils.data_utils import (TrainDatasetFromFolder, ValDatasetFromFolder,
                               display_transform)
 from utils.utils import *
 
-
+# TODO: Dynamic instantiation
 def build_models(cfg):
     # netG = Generator(cfg.TRAIN.upscale_factor)
-    netD = Discriminator()
+    # netG = Discriminator()
+    netG = RRDBNet(
+        num_in_ch=cfg.ARCHS.netG.num_in_ch,
+        num_out_ch=cfg.ARCHS.netG.num_out_ch,
+        num_feat=cfg.ARCHS.netG.num_feat,
+        num_block=cfg.ARCHS.netG.num_block)
+    netD = VGG128(
+        num_feat=cfg.ARCHS.netD.num_feat,
+        num_in_ch=cfg.ARCHS.netD.num_in_ch)
     if cfg.TRAIN.arch_enc == 'hrnet':
         # TODO: Better organize load_state_dict on HRNet
         netSeg = SegmentationModule(net_enc=getHrnetv2(cfg.DATASET.n_classes),
@@ -38,6 +48,7 @@ def build_models(cfg):
         netSeg = None
         print('Not using a segmentation module')
 
+    #TODO: Individual load paths
     if cfg.TRAIN.use_pretrained_sr:
         netG.load_state_dict(torch.load(
             f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
@@ -151,6 +162,7 @@ if __name__ == '__main__':
             netD.zero_grad()
             # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
             real_out = netD(real_img)
+            print(real_out)
             d_real_out = criterion(real_out, True)
             d_real_out.backward(retain_graph=True)
             fake_out = netD(fake_img)
