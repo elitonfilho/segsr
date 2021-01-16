@@ -286,8 +286,7 @@ if __name__ == '__main__':
                     index = 0
                     for image in val_save_bar:
                         image = torchvision.utils.make_grid(image, nrow=3, padding=2)
-                        torchvision.utils.save_image(image, val_out_path / 'val_epoch_%d_index_%d.png' %
-                                                     (epoch, index), padding=5)
+                        torchvision.utils.save_image(image, val_out_path / f'val_epoch_{epoch}_{index}.png', padding=5)
                         index += 1
 
         schedulerD.step()
