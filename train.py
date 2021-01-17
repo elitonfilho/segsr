@@ -18,8 +18,8 @@ from models.model_sr import Discriminator, Generator
 from models.model_unet import UNet
 from models.model_unet_resnet import UNetResNet
 from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
-from models.arch_rrdb import RRDBNet
-from models.arch_vgg import VGG128
+from models.rrdb_arch import RRDBNet
+from models.vgg_arch import VGG128
 
 from data import *
 from utils import pytorch_ssim
@@ -62,6 +62,9 @@ def build_models(cfg):
         netSeg.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_seg), strict=False)
 
     return netG, netD, netSeg
+
+    def build_loss_criterion(cfg):
+        pass
 
 
 if __name__ == '__main__':
