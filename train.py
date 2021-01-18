@@ -67,12 +67,12 @@ def build_models(cfg):
 def build_loss_criterion(cfg):
     losses = cfg.TRAIN.losses
     img_loss = L1Loss(losses.il) if losses.il else None
-    per_loss = PerceptualLoss(losses.per) if losses.per else None
-    img_loss = GANLoss(losses.adv) if losses.adv else None
+    per_loss = PerceptualLoss({'conv5_4':1}) if losses.per else None
+    adv_loss = GANLoss('vanilla') if losses.adv else None
     tv_loss = WeightedTVLoss(losses.tv) if losses.adv else None
     seg_loss = SegLoss(losses.seg) if losses.adv else None
     return (
-        img_loss, per_loss, img_loss, tv_loss, seg_loss
+        img_loss, per_loss, adv_loss, tv_loss, seg_loss
     )
 
 
@@ -121,7 +121,9 @@ if __name__ == '__main__':
 
     create_pretrain_folder(args, cfg)
 
-    generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.losses)
+    criterions = build_loss_criterion(cfg)
+
+    # generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.losses)
 
     if torch.cuda.is_available():
         netG.cuda()
@@ -130,7 +132,12 @@ if __name__ == '__main__':
             netSeg.cuda()
         except (NameError, AttributeError):
             pass
-        generator_criterion.cuda()
+        for crit in criterions:
+            if crit:
+                crit.cuda()
+        # generator_criterion.cuda()
+
+    img_loss, per_loss, adv_loss, tv_loss, seg_loss = criterions
 
     optimizerG = optim.Adam(netG.parameters(), lr=cfg.TRAIN.lr)
     optimizerD = optim.Adam(netD.parameters(), lr=cfg.TRAIN.lr)
@@ -178,10 +185,12 @@ if __name__ == '__main__':
             netD.zero_grad()
             # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
             real_out = netD(real_img)
-            d_real_out = criterion(real_out, True)
+            d_real_out = adv_loss(real_out, True, is_disc=True)
+            # d_real_out = criterion(real_out, True)
             d_real_out.backward(retain_graph=True)
             fake_out = netD(fake_img)
-            d_fake_out = criterion(fake_out, False)
+            d_fake_out = adv_loss(fake_out, False, is_disc=True)
+            # d_fake_out = criterion(fake_out, False)
             d_fake_out.backward(retain_graph=True)
             # d_loss = -(torch.log(real_out) + torch.log(1-fake_out)) is ideal, but D=1 means loss=inf
             # d_loss = 1 - real_out + fake_out
@@ -213,8 +222,14 @@ if __name__ == '__main__':
                 g_loss, losses = generator_criterion(
                     fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             else:
-                g_loss, losses = generator_criterion(
-                    fake_out.detach(), fake_img, real_img, use_seg=_use_seg)
+                l_img = img_loss(fake_img, real_img)
+                l_per = per_loss(fake_img, real_img)[0]
+                l_adv = adv_loss(fake_out, True, is_disc=False)
+                l_tv = tv_loss(fake_img, real_img)
+                l_seg = seg_loss(label_pred, label) if 'label_pred' in locals() else torch.tensor(0)
+                g_loss = l_img + l_per + l_adv + l_tv
+                # g_loss, losses = generator_criterion(
+                #     fake_out.detach(), fake_img, real_img, use_seg=_use_seg)
 
             g_loss.backward()
 
@@ -230,11 +245,16 @@ if __name__ == '__main__':
             running_results['d_loss'] += (d_real_out.item() + d_fake_out.item()) * batch_size
             running_results['d_score'] += real_out.item() * batch_size
             running_results['g_score'] += fake_out.item() * batch_size
-            running_results['seg'] += losses['seg_loss'] * batch_size
-            running_results['adv'] += losses['adversarial_loss'] * batch_size
-            running_results['img'] += losses['image_loss'] * batch_size
-            running_results['per'] += losses['perception_loss'] * batch_size
-            running_results['tv'] += losses['tv_loss'] * batch_size
+            running_results['seg'] += l_seg.item() * batch_size
+            running_results['adv'] += l_adv.item() * batch_size
+            running_results['img'] += l_img.item() * batch_size
+            running_results['per'] += l_per.item() * batch_size
+            running_results['tv'] += l_tv.item() * batch_size
+            # running_results['seg'] += losses['seg_loss'] * batch_size
+            # running_results['adv'] += losses['adversarial_loss'] * batch_size
+            # running_results['img'] += losses['image_loss'] * batch_size
+            # running_results['per'] += losses['perception_loss'] * batch_size
+            # running_results['tv'] += losses['tv_loss'] * batch_size
 
             train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f \
             Seg: %.4f Adv: %.4f  Img: %.4f  Per: %.4f Tv: %.4f LR: %f' % (
