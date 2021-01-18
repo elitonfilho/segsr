@@ -37,7 +37,7 @@ TRAIN:
   model_save_path: 'epochs/'
   model_name: 'teste_seg'
   use_aug: True
-  loss_factor: 
+  losses: 
     il: 1.0
     adv: 0.001
     per: 0.006

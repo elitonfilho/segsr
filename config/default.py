@@ -47,12 +47,12 @@ _C.TRAIN.use_aug = None
 _C.TRAIN.scheduler_milestones = None
 _C.TRAIN.scheduler_gamma = None
 
-_C.TRAIN.loss_factor = CN()
-_C.TRAIN.loss_factor.il = 1.0
-_C.TRAIN.loss_factor.adv = 0.001
-_C.TRAIN.loss_factor.per = 0.006
-_C.TRAIN.loss_factor.tv = 2e-8
-_C.TRAIN.loss_factor.seg = 1e-3
+_C.TRAIN.losses = CN()
+_C.TRAIN.losses.il = 1.0
+_C.TRAIN.losses.adv = 0.001
+_C.TRAIN.losses.per = 0.006
+_C.TRAIN.losses.tv = 2e-8
+_C.TRAIN.losses.seg = 1e-3
 
 _C.VAL = CN()
 _C.VAL.visualize = False

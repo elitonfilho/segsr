@@ -20,6 +20,7 @@ from models.model_unet_resnet import UNetResNet
 from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
 from models.rrdb_arch import RRDBNet
 from models.vgg_arch import VGG128
+from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLoss, SegLoss
 
 from data import *
 from utils import pytorch_ssim
@@ -63,8 +64,16 @@ def build_models(cfg):
 
     return netG, netD, netSeg
 
-    def build_loss_criterion(cfg):
-        pass
+def build_loss_criterion(cfg):
+    losses = cfg.TRAIN.losses
+    img_loss = L1Loss(losses.il) if losses.il else None
+    per_loss = PerceptualLoss(losses.per) if losses.per else None
+    img_loss = GANLoss(losses.adv) if losses.adv else None
+    tv_loss = WeightedTVLoss(losses.tv) if losses.adv else None
+    seg_loss = SegLoss(losses.seg) if losses.adv else None
+    return (
+        img_loss, per_loss, img_loss, tv_loss, seg_loss
+    )
 
 
 if __name__ == '__main__':
@@ -91,13 +100,13 @@ if __name__ == '__main__':
     cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
 
-    train_set = LandCoverDataset(
+    train_set = eval(cfg.DATASET.type)(
         cfg.DATASET.train_dir,
         crop_size=cfg.TRAIN.crop_size,
         upscale_factor=cfg.TRAIN.upscale_factor,
         use_aug=cfg.TRAIN.use_aug)
 
-    val_set = LandCoverDataset(
+    val_set = eval(cfg.DATASET.type)(
         cfg.DATASET.val_dir,
         upscale_factor=cfg.TRAIN.upscale_factor,
         crop_size=cfg.TRAIN.crop_size,
@@ -112,7 +121,7 @@ if __name__ == '__main__':
 
     create_pretrain_folder(args, cfg)
 
-    generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.loss_factor)
+    generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.losses)
 
     if torch.cuda.is_available():
         netG.cuda()
