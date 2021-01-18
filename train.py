@@ -22,7 +22,7 @@ from models.rrdb_arch import RRDBNet
 from models.vgg_arch import VGG128
 from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLoss, SegLoss
 
-from data import *
+from datasets import *
 from utils import pytorch_ssim
 from utils.data_utils import display_transform
 from utils.utils import *
