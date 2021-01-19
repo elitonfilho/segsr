@@ -43,4 +43,4 @@ def save_val_stats(cfg, epoch, stats):
             'PSNR': stats['psnr'] / stats['batch_sizes'],
             'SSIM': stats['ssim'] / stats['batch_sizes'],
         }, index=[0])
-    data_frame.to_csv(out_path, index_label='Epoch', mode='a')
+    data_frame.to_csv(out_path, index_label='Epoch', mode='a', header= not out_path.exists())
