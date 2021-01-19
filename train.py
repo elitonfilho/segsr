@@ -67,7 +67,7 @@ def build_models(cfg):
 def build_loss_criterion(cfg):
     losses = cfg.TRAIN.losses
     img_loss = L1Loss(losses.il) if losses.il else None
-    per_loss = PerceptualLoss({'conv5_4':1}) if losses.per else None
+    per_loss = PerceptualLoss({'conv5_4':1}, perceptual_weight=losses.per) if losses.per else None
     adv_loss = GANLoss('vanilla') if losses.adv else None
     tv_loss = WeightedTVLoss(losses.tv) if losses.adv else None
     seg_loss = SegLoss(losses.seg) if losses.adv else None
@@ -167,11 +167,6 @@ if __name__ == '__main__':
             batch_size = lr.size(0)
             running_results['batch_sizes'] += batch_size
 
-            ############################
-            # (1) Update D network: maximize D(x) + 1-D(G(z))
-            # TODO: As proposed in https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html, optimize D in two steps
-            ###########################
-
             if torch.cuda.is_available():
                 hr = hr.cuda()
                 lr = lr.cuda()
@@ -181,29 +176,16 @@ if __name__ == '__main__':
             lr = lr.float()
             label = label.long()
 
-            fake_img = netG(lr)
-            netD.zero_grad()
-            # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
-            real_out = netD(real_img)
-            d_real_out = adv_loss(real_out, True, is_disc=True)
-            # d_real_out = criterion(real_out, True)
-            d_real_out.backward(retain_graph=True)
-            fake_out = netD(fake_img)
-            d_fake_out = adv_loss(fake_out, False, is_disc=True)
-            # d_fake_out = criterion(fake_out, False)
-            d_fake_out.backward(retain_graph=True)
-            # d_loss = -(torch.log(real_out) + torch.log(1-fake_out)) is ideal, but D=1 means loss=inf
-            # d_loss = 1 - real_out + fake_out
-            # d_loss.backward(retain_graph=True)
-
-            optimizerD.step()
-
             ############################
             # (2) Update G network: minimize 1-D(G(z)) + Losses
             ###########################
 
+            for p in netD.parameters():
+                p.requires_grad = False
+
             netG.zero_grad()
-            fake_out = netD(fake_img)
+            fake_img = netG(lr)
+            d_fake = netD(fake_img)
 
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
@@ -216,35 +198,63 @@ if __name__ == '__main__':
                 label_pred = netSeg(feed, segSize=segSize)
                 label = label.long().squeeze(1)
                 g_loss, losses = generator_criterion(
-                    fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
+                    d_fake.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             elif _use_seg and cfg.TRAIN.arch_enc == 'unet':
                 label_pred = netSeg(fake_img)
                 g_loss, losses = generator_criterion(
-                    fake_out.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
+                    d_fake.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             else:
                 l_img = img_loss(fake_img, real_img)
                 l_per = per_loss(fake_img, real_img)[0]
-                l_adv = adv_loss(fake_out, True, is_disc=False)
+                l_adv = adv_loss(d_fake, True, is_disc=False)
                 l_tv = tv_loss(fake_img, real_img)
                 l_seg = seg_loss(label_pred, label) if 'label_pred' in locals() else torch.tensor(0)
                 g_loss = l_img + l_per + l_adv + l_tv
                 # g_loss, losses = generator_criterion(
-                #     fake_out.detach(), fake_img, real_img, use_seg=_use_seg)
+                #     d_fake.detach(), fake_img, real_img, use_seg=_use_seg)
 
             g_loss.backward()
 
             optimizerG.step()
 
+            ############################
+            # (1) Update D network: maximize D(x) + 1-D(G(z))
+            # TODO: As proposed in https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html, optimize D in two steps
+            ###########################
+
+            for p in netD.parameters():
+                p.requires_grad = True
+
             fake_img = netG(lr)
-            fake_out = netD(fake_img).mean()
-            real_out = netD(real_img).mean()
+
+            netD.zero_grad()
+            # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
+            d_real = netD(real_img)
+            l_d_real = adv_loss(d_real, True, is_disc=True)
+            # l_d_real = criterion(d_real, True)
+            l_d_real.backward()
+            d_fake = netD(fake_img)
+            l_d_fake = adv_loss(d_fake, False, is_disc=True)
+            # l_d_fake = criterion(d_fake, False)
+            l_d_fake.backward()
+            # d_loss = -(torch.log(d_real) + torch.log(1-d_fake)) is ideal, but D=1 means loss=inf
+            # d_loss = 1 - d_real + d_fake
+            # d_loss.backward(retain_graph=True)
+
+            optimizerD.step()
+
+
+
+            fake_img = netG(lr)
+            d_fake = netD(fake_img).mean()
+            d_real = netD(real_img).mean()
 
             # Statistics for current batch
             running_results['g_loss'] += g_loss.item() * batch_size
             # running_results['d_loss'] += d_loss.item() * batch_size
-            running_results['d_loss'] += (d_real_out.item() + d_fake_out.item()) * batch_size
-            running_results['d_score'] += real_out.item() * batch_size
-            running_results['g_score'] += fake_out.item() * batch_size
+            running_results['d_loss'] += (l_d_real.item() + l_d_fake.item()) * batch_size
+            running_results['d_score'] += d_real.item() * batch_size
+            running_results['g_score'] += d_fake.item() * batch_size
             running_results['seg'] += l_seg.item() * batch_size
             running_results['adv'] += l_adv.item() * batch_size
             running_results['img'] += l_img.item() * batch_size
