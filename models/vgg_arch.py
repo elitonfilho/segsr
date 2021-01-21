@@ -52,7 +52,7 @@ class VGG128(nn.Module):
         # activation function
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
 
@@ -79,4 +79,5 @@ class VGG128(nn.Module):
         feat = feat.view(feat.size(0), -1)
         feat = self.lrelu(self.linear1(feat))
         out = self.linear2(feat)
-        return self.sigmoid(out)
+        # return self.sigmoid(out)
+        return out

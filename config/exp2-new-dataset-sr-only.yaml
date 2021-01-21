@@ -1,9 +1,9 @@
 DATASET:
-  type: 'LandCoverDataset'
-  train_dir: 'D:\\de_1m_2013_extended-val_patches'
-  val_dir: 'D:\\de_1m_2013_extended-val_patches'
+  type: 'CGEODataset'
+  train_dir: 'C:\Users\eliton\Documents\ml\datasets\train'
+  val_dir: 'C:\Users\eliton\Documents\ml\datasets\val'
   seg_dir: ''
-  n_classes: 7
+  n_classes: 4
 
 ARCHS:
   netG:
@@ -33,26 +33,26 @@ TRAIN:
   batch_size: 2
   crop_size: 256
   upscale_factor: 4
-  lr: 1e-3
+  lr: 1e-4
   model_save_path: 'epochs/exp1'
   model_name: 'seg1-new-sr-only'
   use_aug: False
   losses: 
-    il: 1.0
-    adv: 0.001
-    per: 0.006
+    il: 1e-2
+    adv: 5e-3
+    per: 1.0
     tv: 2e-8
     seg: 1e-3
 
 VAL:
   visualize: True
   batch_size: 1
-  freq: 5
-  n_chunks: 8
+  freq: 1
+  n_chunks: 5
 
 TEST:
   batch_size: 1
   upscale_factor: 4
-  path_encoder: 'epochs/200_noseg_encoder.pth'
-  path_image: 'data/LR/2953-3-SO_1_LR.png'
-  path_save: 'results/test'
+  path_encoder: 'C:\\Users\\eliton\\Documents\\ml\\BasicSR\\experiments\\esrgan_train1\\models\\net_g_75000.pth'
+  path_image: 'C:\\Users\\eliton\\Documents\\ml\\datasets\\train_lr\\2953-3-SO_0_HR.png'
+  path_save: 'results/test1'

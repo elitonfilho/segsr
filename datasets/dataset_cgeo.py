@@ -35,10 +35,19 @@ def is_image_file(filename):
     return any(filename.endswith(extension) for extension in ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG'])
 
 # TODO: Reorganize get_seg_img
+
+
 def get_seg_img(pathImageHR):
     name = Path(pathImageHR).stem
-    pathSeg = Path(pathImageHR, '../../annotation', f'{name}.png').resolve()
-    return Image.open(pathSeg)  
+    pathSeg = Path(pathImageHR, '../../ann-0-3', f'{name}.png').resolve()
+    return Image.open(pathSeg)
+
+
+def get_lr_img(pathImageHR):
+    name = Path(pathImageHR).stem
+    pathSeg = Path(pathImageHR, '../../lr', f'{name}.png').resolve()
+    return Image.open(pathSeg)
+
 
 class CGEODataset(Dataset):
     def __init__(self, dataset_dir, crop_size, upscale_factor, use_aug=None):
@@ -50,6 +59,7 @@ class CGEODataset(Dataset):
 
     def __getitem__(self, index):
         hr_image = np.array(Image.open(self.image_filenames[index]), dtype=np.uint8)
+        # lr_image = np.array(get_lr_img(self.image_filenames[index]), dtype=np.uint8)
         lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
         seg_image = np.array(get_seg_img(self.image_filenames[index]), dtype=np.int32)
         if self.aug:
@@ -64,3 +74,29 @@ class CGEODataset(Dataset):
 
     def __len__(self):
         return len(self.image_filenames)
+
+
+def debug():
+    train_set = CGEODataset(
+        'C:\\Users\\eliton\\Documents\\ml\\datasets\\train',
+        crop_size=256,
+        upscale_factor=4,
+        use_aug=False)
+
+    lr, hr, mask = train_set[0]
+    print(type(lr), lr.dtype, lr.shape)
+    print(type(hr), hr.dtype, hr.shape)
+    print(type(mask), mask.dtype, mask.shape)
+
+    fig, ax = plt.subplots(1, 3)
+    # ax[0].imshow(hr.astype(np.uint8))
+    # ax[1].imshow(lr)
+    ax[0].imshow(lr.permute(1, 2, 0))
+    ax[1].imshow(hr.permute(1, 2, 0))
+    # ax[3].imshow(hr_restore.permute(1, 2, 0))
+    ax[2].imshow(mask)
+    plt.show()
+
+
+if __name__ == "__main__":
+    debug()

@@ -1,6 +1,7 @@
 import argparse
 import time
 from pathlib import Path
+from matplotlib import pyplot as plt
 
 import torch
 from torch.tensor import Tensor
@@ -9,6 +10,8 @@ from torch.autograd import Variable
 from torchvision.transforms import ToTensor, ToPILImage
 
 from config import cfg
+from models.rrdb_arch import RRDBNet
+from models.vgg_arch import VGG128
 from models.model_sr import Generator
 
 if __name__ == "__main__":
@@ -35,13 +38,14 @@ if __name__ == "__main__":
     cfg.merge_from_file(args.cfg)
     cfg.merge_from_list(args.opts)
 
-    model = Generator(cfg.TEST.upscale_factor).eval()
+    # model = Generator(cfg.TEST.upscale_factor).eval()
+    model = RRDBNet(3,3).eval()
     save_dir = Path(cfg.TEST.path_save).resolve()
     save_dir.mkdir(exist_ok=True)
 
     if torch.cuda.is_available():
         model.cuda()
-        model.load_state_dict(torch.load(cfg.TEST.path_encoder))
+        model.load_state_dict(torch.load(cfg.TEST.path_encoder)['params'])
     else:
         model.load_state_dict(torch.load(cfg.TEST.path_encoder, map_location=lambda storage, loc: storage))
 
@@ -51,12 +55,15 @@ if __name__ == "__main__":
     else:
         p_imgs = [path_img / x for x in path_img.iterdir()]
 
+    model.eval()
+
     for p_img in p_imgs:
         _img = Image.open(p_img)
         _img = ToTensor()(_img).unsqueeze(0)
         if torch.cuda.is_available():
             _img = _img.cuda()
         output = model(_img)
-        output = ToPILImage()(output[0].data.cpu())
+        output = output.squeeze().data.cpu()
+        output = ToPILImage()(output)
         output.save( save_dir / p_img.name)
         print(f'Eval of image {p_img.stem} done.')

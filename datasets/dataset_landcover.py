@@ -18,7 +18,7 @@ class LandCoverDataset(Dataset):
     def __init__(self, dataset_dir, crop_size, upscale_factor, use_aug=None):
         super(LandCoverDataset, self).__init__()
         self.image_filenames = [join(dataset_dir, x)
-                                for x in listdir(dataset_dir)]
+                                for x in listdir(dataset_dir)][:50]
         self.resize_lr = (crop_size//upscale_factor, crop_size//upscale_factor)
         self.aug = aug_train if use_aug else None
 
@@ -51,7 +51,7 @@ def debug():
         crop_size=256,
         upscale_factor=4,
         use_aug=False)
-    
+
     lr, hr, mask = train_set[0]
     print(type(lr), lr.dtype, lr.shape)
     print(type(hr), hr.dtype, hr.shape)

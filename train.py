@@ -243,8 +243,6 @@ if __name__ == '__main__':
 
             optimizerD.step()
 
-
-
             fake_img = netG(lr)
             d_fake = netD(fake_img).mean()
             d_real = netD(real_img).mean()
