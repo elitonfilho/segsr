@@ -24,7 +24,7 @@ from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLo
 
 from datasets import *
 from utils import pytorch_ssim
-from utils.img_utils import display_transform
+from utils.img_utils import compose_val
 from utils.utils import *
 
 # TODO: Dynamic instantiation
@@ -314,9 +314,9 @@ if __name__ == '__main__':
                             valing_results['psnr'], valing_results['ssim']))
 
                     if cfg.VAL.visualize:
-                        val_images.extend(
-                            [display_transform()(hr.data.cpu().squeeze(0)),
-                             display_transform()(sr.data.cpu().squeeze(0))])
+                        val_images.extend([
+                            compose_val()(hr),
+                            compose_val()(sr)])
 
                 # Saving validation results
                 save_val_stats(cfg, epoch, valing_results)

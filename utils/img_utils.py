@@ -3,7 +3,7 @@ import torch
 import albumentations as alb
 from albumentations.pytorch import ToTensorV2
 from torchvision.transforms import (CenterCrop, Compose,
-                                    Resize, ToPILImage, ToTensor,ToPILImage)
+                                    Resize, ToPILImage, ToTensor,ToPILImage, Lambda)
 
 aug = alb.Compose([
     alb.VerticalFlip(p=0.5),
@@ -48,10 +48,8 @@ def tensor2img(tensor, min_max=(0,1), out_type = np.uint8, to_pil = False):
         result = result[0]
     return result
 
-def display_transform():
+def compose_val(min_max = (0,1)):
     return Compose([
-        ToPILImage(),
-        Resize(400),
-        CenterCrop(400),
-        ToTensor()
+        Lambda(lambda img: img.detach().squeeze_(0).cpu()._clamp(*min_max)),
+        Resize(400)
     ])
