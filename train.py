@@ -24,7 +24,7 @@ from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLo
 
 from datasets import *
 from utils import pytorch_ssim
-from utils.data_utils import display_transform
+from utils.img_utils import display_transform
 from utils.utils import *
 
 # TODO: Dynamic instantiation
