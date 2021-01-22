@@ -13,6 +13,7 @@ from config import cfg
 from models.rrdb_arch import RRDBNet
 from models.vgg_arch import VGG128
 from models.model_sr import Generator
+from utils.img_utils import tensor2img
 
 if __name__ == "__main__":
 
@@ -63,7 +64,6 @@ if __name__ == "__main__":
         if torch.cuda.is_available():
             _img = _img.cuda()
         output = model(_img)
-        output = output.squeeze().data.cpu()
-        output = ToPILImage()(output)
+        output = tensor2img(output, to_pil=True)
         output.save( save_dir / p_img.name)
         print(f'Eval of image {p_img.stem} done.')
