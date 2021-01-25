@@ -315,8 +315,8 @@ if __name__ == '__main__':
 
                     if cfg.VAL.visualize:
                         val_images.extend([
-                            compose_val(hr),
-                            compose_val(sr)])
+                            compose_val()(hr),
+                            compose_val()(sr)])
 
                 # Saving validation results
                 save_val_stats(cfg, epoch, valing_results)
