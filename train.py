@@ -24,7 +24,7 @@ from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLo
 
 from datasets import *
 from utils import pytorch_ssim
-from utils.img_utils import compose_val
+from utils.img_utils import compose_val, tensor2img
 from utils.utils import *
 
 # TODO: Dynamic instantiation
@@ -68,7 +68,7 @@ def build_loss_criterion(cfg):
     losses = cfg.TRAIN.losses
     img_loss = L1Loss(losses.il) if losses.il else None
     per_loss = PerceptualLoss({'conv5_4':1}, perceptual_weight=losses.per) if losses.per else None
-    adv_loss = GANLoss('vanilla') if losses.adv else None
+    adv_loss = GANLoss('vanilla', loss_weight=losses.adv) if losses.adv else None
     tv_loss = WeightedTVLoss(losses.tv) if losses.adv else None
     seg_loss = SegLoss(losses.seg) if losses.adv else None
     return (
@@ -315,8 +315,8 @@ if __name__ == '__main__':
 
                     if cfg.VAL.visualize:
                         val_images.extend([
-                            compose_val()(hr),
-                            compose_val()(sr)])
+                            compose_val(hr),
+                            compose_val(sr))
 
                 # Saving validation results
                 save_val_stats(cfg, epoch, valing_results)

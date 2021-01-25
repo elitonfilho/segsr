@@ -49,7 +49,4 @@ def tensor2img(tensor, min_max=(0,1), out_type = np.uint8, to_pil = False):
     return result
 
 def compose_val(min_max = (0,1)):
-    return Compose([
-        Lambda(lambda img: img.detach().squeeze_(0).cpu()._clamp(*min_max)),
-        Resize(400)
-    ])
+    return Lambda(lambda img: img.squeeze(0).clamp_(*min_max).cpu())
