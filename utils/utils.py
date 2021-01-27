@@ -1,5 +1,5 @@
 from pathlib import Path
-from shutil import copy
+from shutil import copy, rmtree
 import torch
 import pandas as pd
 
@@ -7,7 +7,9 @@ import pandas as pd
 def create_pretrain_folder(args, cfg):
     if cfg.TRAIN.model_save_path:
         path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
-        path_save_model.mkdir(exist_ok=True)
+        if path_save_model.exists():
+            rmtree(path_save_model)
+        path_save_model.mkdir()
         copy(args.cfg, path_save_model / 'config.yaml')
 
 
@@ -33,7 +35,8 @@ def save_train_stats(cfg, epoch, stats):
             'Loss_seg': stats['seg'] / stats['batch_sizes'],
 
         }, index=[0])
-    data_frame.to_csv(out_path, index_label='Epoch', mode='a', header= not out_path.exists())
+    data_frame.to_csv(out_path, index_label='Epoch', mode='a', header=not out_path.exists())
+
 
 def save_val_stats(cfg, epoch, stats):
     out_path = Path(cfg.TRAIN.model_save_path, 'val_stats.csv').resolve()
@@ -43,4 +46,4 @@ def save_val_stats(cfg, epoch, stats):
             'PSNR': stats['psnr'] / stats['batch_sizes'],
             'SSIM': stats['ssim'] / stats['batch_sizes'],
         }, index=[0])
-    data_frame.to_csv(out_path, index_label='Epoch', mode='a', header= not out_path.exists())
+    data_frame.to_csv(out_path, index_label='Epoch', mode='a', header=not out_path.exists())
