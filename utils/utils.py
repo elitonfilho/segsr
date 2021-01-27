@@ -1,5 +1,5 @@
 from pathlib import Path
-from shutil import copy, rmtree
+from shutil import copy
 import torch
 import pandas as pd
 
@@ -7,9 +7,7 @@ import pandas as pd
 def create_pretrain_folder(args, cfg):
     if cfg.TRAIN.model_save_path:
         path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
-        if path_save_model.exists():
-            rmtree(path_save_model)
-        path_save_model.mkdir()
+        path_save_model.mkdir(exist_ok=True)
         copy(args.cfg, path_save_model / 'config.yaml')
 
 
