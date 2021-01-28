@@ -27,15 +27,15 @@ def save_train_stats(cfg, epoch, stats):
     data_frame = pd.DataFrame(
         data={
             'Epoch': epoch,
-            'Loss_D': stats['d_loss'] / stats['batch_sizes'],
-            'Loss_G': stats['g_loss'] / stats['batch_sizes'],
-            'Score_D': stats['d_score'] / stats['batch_sizes'],
-            'Score_G': stats['g_score'] / stats['batch_sizes'],
-            'Loss_adv': stats['adv'] / stats['batch_sizes'],
-            'Loss_img': stats['img'] / stats['batch_sizes'],
-            'Loss_tv': stats['tv'] / stats['batch_sizes'],
-            'Loss_per': stats['per'] / stats['batch_sizes'],
-            'Loss_seg': stats['seg'] / stats['batch_sizes'],
+            'Loss_D': stats['d_loss'],
+            'Loss_G': stats['g_loss'],
+            'Score_D': stats['d_score'],
+            'Score_G': stats['g_score'],
+            'Loss_adv': stats['adv'],
+            'Loss_img': stats['img'],
+            'Loss_tv': stats['tv'],
+            'Loss_per': stats['per'],
+            'Loss_seg': stats['seg'],
 
         }, index=[0])
     data_frame.to_csv(out_path, index_label='Epoch', mode='a', header=not out_path.exists())
@@ -46,7 +46,7 @@ def save_val_stats(cfg, epoch, stats):
     data_frame = pd.DataFrame(
         data={
             'Epoch': epoch,
-            'PSNR': stats['psnr'] / stats['batch_sizes'],
-            'SSIM': stats['ssim'] / stats['batch_sizes'],
+            'PSNR': stats['psnr'],
+            'SSIM': stats['ssim'],
         }, index=[0])
     data_frame.to_csv(out_path, index_label='Epoch', mode='a', header=not out_path.exists())
