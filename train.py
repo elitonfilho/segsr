@@ -69,8 +69,8 @@ def build_loss_criterion(cfg):
     img_loss = L1Loss(losses.il) if losses.il else None
     per_loss = PerceptualLoss({'conv5_4':1}, perceptual_weight=losses.per) if losses.per else None
     adv_loss = GANLoss('vanilla', loss_weight=losses.adv) if losses.adv else None
-    tv_loss = WeightedTVLoss(losses.tv) if losses.adv else None
-    seg_loss = SegLoss(losses.seg) if losses.adv else None
+    tv_loss = WeightedTVLoss(losses.tv) if losses.tv else None
+    seg_loss = SegLoss(losses.seg) if losses.seg else None
     return (
         img_loss, per_loss, adv_loss, tv_loss, seg_loss
     )
@@ -187,6 +187,12 @@ if __name__ == '__main__':
             fake_img = netG(lr)
             d_fake = netD(fake_img)
 
+            # Getting losses
+            l_img = img_loss(fake_img, real_img)
+            l_per = per_loss(fake_img, real_img)[0]
+            l_adv = adv_loss(d_fake, True, is_disc=False)
+            l_tv = tv_loss(fake_img, real_img)
+
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
             if _use_seg and cfg.TRAIN.arch_enc == 'hrnet':
@@ -201,17 +207,11 @@ if __name__ == '__main__':
                     d_fake.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
             elif _use_seg and cfg.TRAIN.arch_enc == 'unet':
                 label_pred = netSeg(fake_img)
-                g_loss, losses = generator_criterion(
-                    d_fake.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
+                l_seg = seg_loss(label_pred, label)
+                g_loss = l_img + l_per + l_adv + l_tv + l_seg
             else:
-                l_img = img_loss(fake_img, real_img)
-                l_per = per_loss(fake_img, real_img)[0]
-                l_adv = adv_loss(d_fake, True, is_disc=False)
-                l_tv = tv_loss(fake_img, real_img)
                 l_seg = seg_loss(label_pred, label) if 'label_pred' in locals() else torch.tensor(0)
                 g_loss = l_img + l_per + l_adv + l_tv
-                # g_loss, losses = generator_criterion(
-                #     d_fake.detach(), fake_img, real_img, use_seg=_use_seg)
 
             g_loss.backward()
 
@@ -258,11 +258,6 @@ if __name__ == '__main__':
             running_results['img'] += l_img.item() * batch_size
             running_results['per'] += l_per.item() * batch_size
             running_results['tv'] += l_tv.item() * batch_size
-            # running_results['seg'] += losses['seg_loss'] * batch_size
-            # running_results['adv'] += losses['adversarial_loss'] * batch_size
-            # running_results['img'] += losses['image_loss'] * batch_size
-            # running_results['per'] += losses['perception_loss'] * batch_size
-            # running_results['tv'] += losses['tv_loss'] * batch_size
 
             train_bar.set_description(desc='[%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f \
             Seg: %.4f Adv: %.4f  Img: %.4f  Per: %.4f Tv: %.4f LR: %f' % (

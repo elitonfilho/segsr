@@ -23,8 +23,8 @@ def charbonnier_loss(pred, target, eps=1e-12):
 
 # TODO: add weight
 @weighted_loss
-def bce_loss(pred, target):
-    return F.binary_cross_entropy_with_logits(pred, target, reduction='none')
+def ce_loss(pred, target):
+    return F.cross_entropy(pred, target, reduction='none')
 
 
 class L1Loss(nn.Module):
@@ -405,5 +405,5 @@ class SegLoss(nn.Module):
             weight (Tensor, optional): of shape (N, C, H, W). Element-wise
                 weights. Default: None.
         """
-        return self.loss_weight * bce_loss(
+        return self.loss_weight * ce_loss(
             pred, target, weight, reduction=self.reduction)
