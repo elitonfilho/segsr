@@ -2,12 +2,17 @@ from pathlib import Path
 from shutil import copy
 import torch
 import pandas as pd
+from datetime import datetime
 
 
 def create_pretrain_folder(args, cfg):
     if cfg.TRAIN.model_save_path:
         path_save_model = Path(cfg.TRAIN.model_save_path).resolve()
-        path_save_model.mkdir(exist_ok=True)
+        if path_save_model.exists():
+            time = datetime.now().strftime('%Y%m%d-%H%M')
+            path_save_model.rename(
+                path_save_model.parent / f'{path_save_model.stem}_{time}')
+        path_save_model.mkdir()
         copy(args.cfg, path_save_model / 'config.yaml')
 
 
