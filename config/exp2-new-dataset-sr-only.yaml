@@ -4,6 +4,7 @@ DATASET:
   val_dir: 'C:\Users\eliton\Documents\ml\datasets\val'
   seg_dir: ''
   n_classes: 4
+  weight_classes: [.1, .3, .3, .2]
 
 ARCHS:
   netG:

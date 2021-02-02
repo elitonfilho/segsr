@@ -10,6 +10,7 @@ _C.DATASET.train_dir = 'data/train'
 _C.DATASET.val_dir = 'data/val'
 _C.DATASET.seg_dir = 'data/annotation'
 _C.DATASET.n_classes = 5
+_C.DATASET.weight_classes = None
 
 _C.ARCHS = CN()
 

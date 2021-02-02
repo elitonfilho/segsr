@@ -66,11 +66,12 @@ def build_models(cfg):
 
 def build_loss_criterion(cfg):
     losses = cfg.TRAIN.losses
+    weight_classes = cfg.DATASET.weight_classes
     img_loss = L1Loss(losses.il) if losses.il else None
     per_loss = PerceptualLoss({'conv5_4':1}, perceptual_weight=losses.per) if losses.per else None
     adv_loss = GANLoss('vanilla', loss_weight=losses.adv) if losses.adv else None
     tv_loss = WeightedTVLoss(losses.tv) if losses.tv else None
-    seg_loss = SegLoss(losses.seg) if losses.seg else None
+    seg_loss = SegLoss(losses.seg, weight_classes) if losses.seg else None
     return (
         img_loss, per_loss, adv_loss, tv_loss, seg_loss
     )

@@ -23,8 +23,8 @@ def charbonnier_loss(pred, target, eps=1e-12):
 
 # TODO: add weight
 @weighted_loss
-def ce_loss(pred, target):
-    return F.cross_entropy(pred, target, reduction='none')
+def ce_loss(pred, target, weight_classes):
+    return F.cross_entropy(pred, target, weight_classes, reduction='none')
 
 
 class L1Loss(nn.Module):
@@ -388,13 +388,14 @@ class SegLoss(nn.Module):
             Supported choices are 'none' | 'mean' | 'sum'. Default: 'mean'.
     """
 
-    def __init__(self, loss_weight=1.0, reduction='mean'):
+    def __init__(self, loss_weight=1.0, weight_classes=None, reduction='mean'):
         super(SegLoss, self).__init__()
         if reduction not in ['none', 'mean', 'sum']:
             raise ValueError(f'Unsupported reduction mode: {reduction}. '
                             f'Supported ones are: {_reduction_modes}')
 
         self.loss_weight = loss_weight
+        self.weight_classes = torch.tensor(weight_classes).cuda()
         self.reduction = reduction
 
     def forward(self, pred, target, weight=None, **kwargs):
@@ -406,4 +407,4 @@ class SegLoss(nn.Module):
                 weights. Default: None.
         """
         return self.loss_weight * ce_loss(
-            pred, target, weight, reduction=self.reduction)
+            pred, target, weight, weight_classes=self.weight_classes, reduction=self.reduction)
