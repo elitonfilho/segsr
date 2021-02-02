@@ -71,4 +71,4 @@ if __name__ == "__main__":
         output = tensor2img(output, to_pil=True)
         output.save(save_dir / f'{cfg.TEST.prefix_save}_{p_img.name}')
         i += 1
-        p_imgs_bar.set_description(f'[{i}/{len(p_imgs_bar)}]Eval of image {p_img.stem} done.')
+        p_imgs_bar.set_description(f'Evaluating image {p_img.stem}.')
