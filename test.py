@@ -50,8 +50,8 @@ if __name__ == "__main__":
     else:
         model.load_state_dict(torch.load(cfg.TEST.path_encoder, map_location=lambda storage, loc: storage))
 
-    path_img = Path(cfg.TEST.path_image)
-    if Path(path_img).is_file():
+    path_img = Path(cfg.TEST.path_image).resolve()
+    if path_img.is_file():
         p_imgs =  [path_img]
     else:
         p_imgs = [path_img / x for x in path_img.iterdir() if x.suffix in ['.png', '.jpg', '.jpeg']]
