@@ -8,6 +8,7 @@ from torch.tensor import Tensor
 from PIL import Image
 from torch.autograd import Variable
 from torchvision.transforms import ToTensor, ToPILImage
+from tqdm import tqdm
 
 from config import cfg
 from models.rrdb_arch import RRDBNet
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     cfg.merge_from_list(args.opts)
 
     # model = Generator(cfg.TEST.upscale_factor).eval()
-    model = RRDBNet(3,3).eval()
+    model = RRDBNet(3, 3).eval()
     save_dir = Path(cfg.TEST.path_save).resolve()
     save_dir.mkdir(exist_ok=True)
 
@@ -52,18 +53,22 @@ if __name__ == "__main__":
 
     path_img = Path(cfg.TEST.path_image).resolve()
     if path_img.is_file():
-        p_imgs =  [path_img]
+        p_imgs = [path_img]
     else:
         p_imgs = [path_img / x for x in path_img.iterdir() if x.suffix in ['.png', '.jpg', '.jpeg']]
 
     model.eval()
 
-    for p_img in p_imgs:
+    p_imgs_bar = tqdm(p_imgs)
+
+    for p_img in p_imgs_bar:
+        i = 0
         _img = Image.open(p_img)
         _img = ToTensor()(_img).unsqueeze(0)
         if torch.cuda.is_available():
             _img = _img.cuda()
         output = model(_img)
         output = tensor2img(output, to_pil=True)
-        output.save( save_dir / f'{cfg.TEST.prefix_save}_{p_img.name}')
-        print(f'Eval of image {p_img.stem} done.')
+        output.save(save_dir / f'{cfg.TEST.prefix_save}_{p_img.name}')
+        i += 1
+        p_imgs_bar.set_description(f'[{i}/{len(p_imgs_bar)}]Eval of image {p_img.stem} done.')
