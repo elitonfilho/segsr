@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     if torch.cuda.is_available():
         model.cuda()
-        model.load_state_dict(torch.load(cfg.TEST.path_encoder)['params'])
+        model.load_state_dict(torch.load(cfg.TEST.path_encoder))
     else:
         model.load_state_dict(torch.load(cfg.TEST.path_encoder, map_location=lambda storage, loc: storage))
 
