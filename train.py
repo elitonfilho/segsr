@@ -291,8 +291,8 @@ if __name__ == '__main__':
                 for val_lr, val_hr, val_seg in val_bar:
                     batch_size = val_lr.size(0)
                     valing_results['batch_sizes'] += batch_size
-                    lr = val_lr
-                    hr = val_hr
+                    lr = val_lr.float()
+                    hr = val_hr.float()
                     if torch.cuda.is_available():
                         lr = lr.cuda()
                         hr = hr.cuda()
