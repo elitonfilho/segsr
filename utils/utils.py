@@ -24,18 +24,19 @@ def save_model(cfg, netG, netD):
 
 def save_train_stats(cfg, epoch, stats):
     out_path = Path(cfg.TRAIN.model_save_path, 'train_stats.csv').resolve()
+    len_ds = stats['batch_sizes']
     data_frame = pd.DataFrame(
         data={
             'Epoch': epoch,
-            'Loss_D': stats['d_loss'],
-            'Loss_G': stats['g_loss'],
-            'Score_D': stats['d_score'],
-            'Score_G': stats['g_score'],
-            'Loss_adv': stats['adv'],
-            'Loss_img': stats['img'],
-            'Loss_tv': stats['tv'],
-            'Loss_per': stats['per'],
-            'Loss_seg': stats['seg'],
+            'Loss_D': stats['d_loss']/len_ds,
+            'Loss_G': stats['g_loss']/len_ds,
+            'Score_D': stats['d_score']/len_ds,
+            'Score_G': stats['g_score']/len_ds,
+            'Loss_adv': stats['adv']/len_ds,
+            'Loss_img': stats['img']/len_ds,
+            'Loss_tv': stats['tv']/len_ds,
+            'Loss_per': stats['per']/len_ds,
+            'Loss_seg': stats['seg']/len_ds,
 
         }, index=[0])
     data_frame.to_csv(out_path, index_label='Epoch', mode='a', header=not out_path.exists())
