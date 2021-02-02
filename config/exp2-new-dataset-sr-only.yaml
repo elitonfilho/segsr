@@ -57,3 +57,4 @@ TEST:
   path_encoder: 'C:\\Users\\eliton\\Documents\\ml\\BasicSR\\experiments\\esrgan_train1\\models\\net_g_75000.pth'
   path_image: 'C:\\Users\\eliton\\Documents\\ml\\datasets\\train_lr\\2953-3-SO_0_HR.png'
   path_save: 'results/test1'
+  prefix_save: 'seg1'

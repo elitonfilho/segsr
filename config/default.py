@@ -68,3 +68,4 @@ _C.TEST.path_encoder = 'epochs/encoder.pth'
 _C.TEST.upscale_factor = 4
 _C.TEST.path_image = 'data/test'
 _C.TEST.path_save = 'results/'
+_C.TEST.prefix_save = ''

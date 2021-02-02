@@ -65,5 +65,5 @@ if __name__ == "__main__":
             _img = _img.cuda()
         output = model(_img)
         output = tensor2img(output, to_pil=True)
-        output.save( save_dir / p_img.name)
+        output.save( save_dir / f'{cfg.TEST.prefix_save}_{p_img.name}')
         print(f'Eval of image {p_img.stem} done.')
