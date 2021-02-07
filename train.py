@@ -178,7 +178,7 @@ if __name__ == '__main__':
             label = label.long()
 
             ############################
-            # (2) Update G network: minimize 1-D(G(z)) + Losses
+            # (1) Update G network: minimize 1-D(G(z)) + Losses
             ###########################
 
             for p in netD.parameters():
@@ -187,12 +187,16 @@ if __name__ == '__main__':
             netG.zero_grad()
             fake_img = netG(lr)
             d_fake = netD(fake_img)
+            d_real = netD(real_img).detach()
 
             # Getting losses
             l_img = img_loss(fake_img, real_img)
             l_per = per_loss(fake_img, real_img)[0]
-            l_adv = adv_loss(d_fake, True, is_disc=False)
             l_tv = tv_loss(fake_img, real_img)
+            # l_adv = adv_loss(d_fake, True, is_disc=False)
+            l_g_real = adv_loss(d_real - torch.mean(d_fake), False, is_disc=False)
+            l_g_fake = adv_loss(d_fake - torch.mean(d_real), True, is_disc=False)
+            l_adv = (l_g_real + l_g_fake)/2
 
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
@@ -219,28 +223,25 @@ if __name__ == '__main__':
             optimizerG.step()
 
             ############################
-            # (1) Update D network: maximize D(x) + 1-D(G(z))
-            # TODO: As proposed in https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html, optimize D in two steps
+            # (2) Update D network: maximize D(x) + 1-D(G(z))
+            # Optimizing D in two steps, see https://pytorch.org/tutorials/beginner/dcgan_faces_tutorial.html
             ###########################
 
             for p in netD.parameters():
                 p.requires_grad = True
 
-            fake_img = netG(lr)
+            # fake_img = netG(lr)
 
             netD.zero_grad()
-            # TODO: Relativistic GAN. See https://github.com/xinntao/BasicSR/blob/master/basicsr/models/esrgan_model.py
+            d_fake = netD(fake_img).detach()
             d_real = netD(real_img)
-            l_d_real = adv_loss(d_real, True, is_disc=True)
-            # l_d_real = criterion(d_real, True)
+            # l_d_real = adv_loss(d_real, True, is_disc=True)
+            l_d_real = adv_loss(d_real - torch.mean(d_fake), True, is_disc=True) * 0.5
             l_d_real.backward()
-            d_fake = netD(fake_img)
-            l_d_fake = adv_loss(d_fake, False, is_disc=True)
-            # l_d_fake = criterion(d_fake, False)
+            d_fake = netD(fake_img.detach())
+            # l_d_fake = adv_loss(d_fake, False, is_disc=True)
+            l_d_fake = adv_loss(d_fake - torch.mean(d_real.detach()), False, is_disc=True) * 0.5
             l_d_fake.backward()
-            # d_loss = -(torch.log(d_real) + torch.log(1-d_fake)) is ideal, but D=1 means loss=inf
-            # d_loss = 1 - d_real + d_fake
-            # d_loss.backward(retain_graph=True)
 
             optimizerD.step()
 
