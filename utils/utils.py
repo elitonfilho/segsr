@@ -16,10 +16,10 @@ def create_pretrain_folder(args, cfg):
         copy(args.cfg, path_save_model / 'config.yaml')
 
 
-def save_model(cfg, netG, netD):
+def save_model(cfg, best_results, netG, netD):
     save_path = Path(cfg.TRAIN.model_save_path).resolve()
-    torch.save(netG.state_dict(), save_path / f'{cfg.TRAIN.model_name}_encoder.pth')
-    torch.save(netD.state_dict(), save_path / f'{cfg.TRAIN.model_name}_decoder.pth')
+    torch.save(netG, save_path / f'{cfg.TRAIN.model_name}_g_{best_results["epoch"]}.pth')
+    torch.save(netD, save_path / f'{cfg.TRAIN.model_name}_d_{best_results["epoch"]}.pth')
 
 
 def save_train_stats(cfg, epoch, stats):

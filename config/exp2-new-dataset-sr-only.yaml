@@ -26,7 +26,8 @@ TRAIN:
   use_pretrained_seg: False
   path_pretrained_seg: 'epochs/unet-novo-dataset'
   use_pretrained_sr: False
-  path_pretrained_sr: 'epochs/200_noseg'
+  path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
+  path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
   begin_seg: 0.
   num_epochs: 2
   scheduler_milestones: [50,100,150,200]

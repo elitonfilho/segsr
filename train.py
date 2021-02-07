@@ -54,21 +54,19 @@ def build_models(cfg):
 
     # TODO: Individual load paths
     if cfg.TRAIN.use_pretrained_sr:
-        netG.load_state_dict(torch.load(
-            f'{cfg.TRAIN.path_pretrained_sr}_encoder.pth'), strict=False)
-        netD.load_state_dict(torch.load(
-            f'{cfg.TRAIN.path_pretrained_sr}_decoder.pth'), strict=False)
-
+        netG.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_g), strict=False)
+        netD.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_d), strict=False)
     if cfg.TRAIN.use_pretrained_seg:
         netSeg.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_seg), strict=False)
 
     return netG, netD, netSeg
 
+
 def build_loss_criterion(cfg):
     losses = cfg.TRAIN.losses
     weight_classes = cfg.DATASET.weight_classes
     img_loss = L1Loss(losses.il) if losses.il else None
-    per_loss = PerceptualLoss({'conv5_4':1}, perceptual_weight=losses.per) if losses.per else None
+    per_loss = PerceptualLoss({'conv5_4': 1}, perceptual_weight=losses.per) if losses.per else None
     adv_loss = GANLoss('vanilla', loss_weight=losses.adv) if losses.adv else None
     tv_loss = WeightedTVLoss(losses.tv) if losses.tv else None
     seg_loss = SegLoss(losses.seg, weight_classes) if losses.seg else None
@@ -156,7 +154,7 @@ if __name__ == '__main__':
         running_results = {'batch_sizes': 0, 'd_loss': 0,
                            'g_loss': 0, 'd_score': 0, 'g_score': 0,
                            'seg': 0, 'adv': 0, 'img': 0, 'per': 0, 'tv': 0}
-        best_results = {'psnr':0, 'ssim': -1}
+        best_results = {epoch: -1, 'psnr': 0, 'ssim': -1}
 
         netG.train()
         netD.train()
@@ -346,8 +344,6 @@ if __name__ == '__main__':
 
         if epoch == cfg.TRAIN.num_epochs:
             try:
-                save_model(cfg, best_netG, best_netD)
-            except Exception:
-                pass
-            else:
-                save_model(cfg, netG, netD)
+                save_model(cfg, best_results, best_netG, best_netD)
+            except NameError:
+                save_model(cfg, best_results, netG.state_dict(), netD.state_dict())
