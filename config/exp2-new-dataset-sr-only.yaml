@@ -28,7 +28,7 @@ TRAIN:
   use_pretrained_sr: False
   path_pretrained_sr: 'epochs/200_noseg'
   begin_seg: 0.
-  num_epochs: 20
+  num_epochs: 2
   scheduler_milestones: [50,100,150,200]
   scheduler_gamma: 0.5
   batch_size: 2
@@ -38,6 +38,7 @@ TRAIN:
   model_save_path: 'epochs/exp1'
   model_name: 'seg1-new-sr-only'
   use_aug: False
+  save_best: 'psnr'
   losses: 
     il: 1e-2
     adv: 5e-3

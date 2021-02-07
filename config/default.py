@@ -44,6 +44,7 @@ _C.TRAIN.upscale_factor = 4
 _C.TRAIN.lr = 1e-3
 _C.TRAIN.model_save_path = 'epochs/'
 _C.TRAIN.model_name = 'model'
+_C.TRAIN.save_best = ''
 _C.TRAIN.use_aug = None
 _C.TRAIN.scheduler_milestones = None
 _C.TRAIN.scheduler_gamma = None

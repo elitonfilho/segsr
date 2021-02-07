@@ -154,8 +154,9 @@ if __name__ == '__main__':
     for epoch in range(1, cfg.TRAIN.num_epochs + 1):
         train_bar = tqdm(train_loader)
         running_results = {'batch_sizes': 0, 'd_loss': 0,
-                           'g_loss': 0, 'd_score': 0, 'g_score': 0, 'SL': 0,
+                           'g_loss': 0, 'd_score': 0, 'g_score': 0,
                            'seg': 0, 'adv': 0, 'img': 0, 'per': 0, 'tv': 0}
+        best_results = {'psnr':0, 'ssim': -1}
 
         netG.train()
         netD.train()
@@ -288,6 +289,7 @@ if __name__ == '__main__':
             with torch.no_grad():
                 val_bar = tqdm(val_loader)
                 valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
+
                 val_images = []
                 for val_lr, val_hr, val_seg in val_bar:
                     batch_size = val_lr.size(0)
@@ -318,6 +320,13 @@ if __name__ == '__main__':
                 # Saving validation results
                 save_val_stats(cfg, epoch, valing_results)
 
+                if cfg.TRAIN.save_best:
+                    metric = cfg.TRAIN.save_best
+                    if valing_results[metric] > best_results[metric]:
+                        best_results[metric] = valing_results[metric]
+                        best_netG = netG.state_dict()
+                        best_netD = netD.state_dict()
+
                 # Saving SR images from validation set if visualize=True
                 if cfg.VAL.visualize:
                     val_images = torch.stack(val_images)
@@ -336,4 +345,9 @@ if __name__ == '__main__':
         save_train_stats(cfg, epoch, running_results)
 
         if epoch == cfg.TRAIN.num_epochs:
-            save_model(cfg, netG, netD)
+            try:
+                save_model(cfg, best_netG, best_netD)
+            except Exception:
+                pass
+            else:
+                save_model(cfg, netG, netD)
