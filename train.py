@@ -10,6 +10,7 @@ import torchvision
 import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from tensorboardX import SummaryWriter
 
 from config import cfg
 from models.loss_sr import GeneratorLoss, criterion
@@ -118,9 +119,11 @@ if __name__ == '__main__':
 
     netG, netD, netSeg = build_models(cfg)
 
-    create_pretrain_folder(args, cfg)
+    path_save_model = create_pretrain_folder(args, cfg)
 
     criterions = build_loss_criterion(cfg)
+
+    writer = SummaryWriter(path_save_model)
 
     # generator_criterion = GeneratorLoss(seg=cfg.TRAIN.arch_enc, loss_factor=cfg.TRAIN.losses)
 
@@ -275,6 +278,8 @@ if __name__ == '__main__':
                 schedulerG.get_last_lr()[0]
             ))
 
+            writer.add_scalars('stats/train', running_results, epoch)
+
         # TODO: Save val stats
         if epoch % cfg.VAL.freq == 0:
 
@@ -315,6 +320,8 @@ if __name__ == '__main__':
                             compose_val()(hr),
                             compose_val()(sr)])
 
+                writer.add_scalars('stats/val', valing_results, epoch)
+
                 # Saving validation results
                 save_val_stats(cfg, epoch, valing_results)
 
@@ -322,6 +329,7 @@ if __name__ == '__main__':
                     metric = cfg.TRAIN.save_best
                     if valing_results[metric] > best_results[metric]:
                         best_results[metric] = valing_results[metric]
+                        best_results['epoch'] = epoch
                         best_netG = netG.state_dict()
                         best_netD = netD.state_dict()
 
@@ -336,14 +344,16 @@ if __name__ == '__main__':
                         torchvision.utils.save_image(
                             image, val_out_path / f'val_epoch_{epoch}_{index}.png', padding=5)
                         index += 1
+                        writer.add_image(f'ep{epoch}_{index}', image, epoch)
 
         schedulerD.step()
         schedulerG.step()
 
         save_train_stats(cfg, epoch, running_results)
 
-        if epoch == cfg.TRAIN.num_epochs:
-            try:
-                save_model(cfg, best_results, best_netG, best_netD)
-            except NameError:
-                save_model(cfg, best_results, netG.state_dict(), netD.state_dict())
+    try:
+        save_model(cfg, best_results, best_netG, best_netD)
+    except NameError:
+        save_model(cfg, best_results, netG.state_dict(), netD.state_dict())
+
+    writer.close()

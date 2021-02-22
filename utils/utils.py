@@ -14,6 +14,7 @@ def create_pretrain_folder(args, cfg):
                 path_save_model.parent / f'{path_save_model.stem}_{time}')
         path_save_model.mkdir()
         copy(args.cfg, path_save_model / 'config.yaml')
+        return path_save_model
 
 
 def save_model(cfg, best_results, netG, netD):
