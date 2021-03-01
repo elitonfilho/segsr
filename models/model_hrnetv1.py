@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import numpy as np
 
@@ -9,10 +5,6 @@ import torch
 import torch.nn as nn
 import torch._utils
 import torch.nn.functional as F
-
-from runx.logx import logx
-from utils.config import cfg
-
 
 BN_MOMENTUM = 0.1
 align_corners = cfg.MODEL.ALIGN_CORNERS
@@ -126,19 +118,16 @@ class HighResolutionModule(nn.Module):
         if num_branches != len(num_blocks):
             error_msg = 'NUM_BRANCHES({}) <> NUM_BLOCKS({})'.format(
                 num_branches, len(num_blocks))
-            logx.msg(error_msg)
             raise ValueError(error_msg)
 
         if num_branches != len(num_channels):
             error_msg = 'NUM_BRANCHES({}) <> NUM_CHANNELS({})'.format(
                 num_branches, len(num_channels))
-            logx.msg(error_msg)
             raise ValueError(error_msg)
 
         if num_branches != len(num_inchannels):
             error_msg = 'NUM_BRANCHES({}) <> NUM_INCHANNELS({})'.format(
                 num_branches, len(num_inchannels))
-            logx.msg(error_msg)
             raise ValueError(error_msg)
 
     def _make_one_branch(self, branch_index, block, num_blocks, num_channels,

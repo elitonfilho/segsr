@@ -18,7 +18,9 @@ from models.model_hrnet import HRNet
 from models.model_sr import Discriminator, Generator
 from models.model_unet import UNet
 from models.model_unet_resnet import UNetResNet
-from models.models_hrnetv2 import SegmentationModule, getC1, getHrnetv2
+from models.model_hrnet_C1 import SegmentationModule, getC1, getHrnetv2
+# from models.models_hrnetv1 import get_seg_model
+from models.models_hrnetv2 import get_seg_model
 from models.rrdb_arch import RRDBNet
 from models.vgg_arch import VGG128
 from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLoss, SegLoss
@@ -43,10 +45,7 @@ def build_models(cfg):
         num_feat=cfg.ARCHS.netD.num_feat,
         num_in_ch=cfg.ARCHS.netD.num_in_ch)
     if cfg.TRAIN.arch_enc == 'hrnet':
-        # TODO: Better organize load_state_dict on HRNet
-        netSeg = SegmentationModule(net_enc=getHrnetv2(cfg.DATASET.n_classes),
-                                    net_dec=getC1(cfg.DATASET.n_classes),
-                                    crit=nn.NLLLoss(ignore_index=1))
+        netSeg = get_seg_model(cfg)
     elif cfg.TRAIN.arch_enc == 'unet':
         netSeg = UNetResNet(num_classes=cfg.DATASET.n_classes)
     else:
@@ -203,15 +202,9 @@ if __name__ == '__main__':
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
             if _use_seg and cfg.TRAIN.arch_enc == 'hrnet':
-                feed = {
-                    'img_data': fake_img,
-                    'seg_label': label
-                }
-                segSize = (label.shape[0], label.shape[1])
-                label_pred = netSeg(feed, segSize=segSize)
-                label = label.long().squeeze(1)
-                g_loss, losses = generator_criterion(
-                    d_fake.detach(), fake_img, real_img, label, label_pred, use_seg=cfg.TRAIN.use_seg)
+                label_pred = netSeg(fake_img)[0:cfg.DATASET.n_classes]
+                l_seg = seg_loss(label_pred, label)
+                g_loss = l_img + l_per + l_adv + l_tv + l_seg
             elif _use_seg and cfg.TRAIN.arch_enc == 'unet':
                 label_pred = netSeg(fake_img)
                 l_seg = seg_loss(label_pred, label)
