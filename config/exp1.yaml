@@ -4,6 +4,7 @@ DATASET:
   val_dir: 'C:\Users\Eliton\Documents\master\unet\data\val\hr'
   seg_dir: 'C:\Users\Eliton\Documents\master\unet\data\train\annotation'
   n_classes: 4
+  weight_classes: []
 
 ARCHS:
   netG:
@@ -25,7 +26,8 @@ TRAIN:
   use_pretrained_seg: True
   path_pretrained_seg: 'epochs/unet-resnet-100.pth'
   use_pretrained_sr: True
-  path_pretrained_sr: 'epochs/200_noseg'
+  path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
+  path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
   begin_seg: 0.
   num_epochs: 20
   scheduler_milestones: [50,100,150,200]
@@ -37,6 +39,7 @@ TRAIN:
   model_save_path: 'epochs/'
   model_name: 'teste_seg'
   use_aug: True
+  save_best: 'psnr'
   losses: 
     il: 1.0
     adv: 0.001
@@ -56,3 +59,4 @@ TEST:
   path_encoder: 'epochs/200_noseg_encoder.pth'
   path_image: 'data/LR/2953-3-SO_1_LR.png'
   path_save: 'results/test'
+  prefix_save: 'seg'
