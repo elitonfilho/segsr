@@ -247,11 +247,11 @@ class HighResolutionNet(nn.Module):
         extra = config.hrnet
         super(HighResolutionNet, self).__init__()
 
-        # stem net
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
+        # Check stride
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn1 = BatchNorm2d(64, momentum=BN_MOMENTUM)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1,
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn2 = BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=True)
@@ -306,7 +306,7 @@ class HighResolutionNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 in_channels=last_inp_channels,
-                out_channels=config.DATASET.NUM_CLASSES,
+                out_channels=config.DATASET.n_classes,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)
@@ -428,11 +428,11 @@ class HighResolutionNet(nn.Module):
         x = self.stage4(x_list)
 
         # Upsampling
-        # TODO: F.Interpolate
         x0_h, x0_w = x[0].size(2), x[0].size(3)
-        x1 = F.upsample(x[1], size=(x0_h, x0_w), mode='bilinear')
-        x2 = F.upsample(x[2], size=(x0_h, x0_w), mode='bilinear')
-        x3 = F.upsample(x[3], size=(x0_h, x0_w), mode='bilinear')
+
+        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=False)
+        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=False)
+        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=False)
 
         x = torch.cat([x[0], x1, x2, x3], 1)
 

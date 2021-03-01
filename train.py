@@ -14,13 +14,12 @@ from tensorboardX import SummaryWriter
 
 from config import cfg
 from models.loss_sr import GeneratorLoss, criterion
-from models.model_hrnet import HRNet
 from models.model_sr import Discriminator, Generator
 from models.model_unet import UNet
 from models.model_unet_resnet import UNetResNet
 from models.model_hrnet_C1 import SegmentationModule, getC1, getHrnetv2
-# from models.models_hrnetv1 import get_seg_model
-from models.models_hrnetv2 import get_seg_model
+# from models.model_hrnetv1 import get_seg_model
+from models.model_hrnetv2 import get_seg_model
 from models.rrdb_arch import RRDBNet
 from models.vgg_arch import VGG128
 from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLoss, SegLoss
@@ -202,7 +201,7 @@ if __name__ == '__main__':
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
             if _use_seg and cfg.TRAIN.arch_enc == 'hrnet':
-                label_pred = netSeg(fake_img)[0:cfg.DATASET.n_classes]
+                label_pred = netSeg(fake_img)
                 l_seg = seg_loss(label_pred, label)
                 g_loss = l_img + l_per + l_adv + l_tv + l_seg
             elif _use_seg and cfg.TRAIN.arch_enc == 'unet':
