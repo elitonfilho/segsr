@@ -3,11 +3,10 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-import torch._utils
 import torch.nn.functional as F
 
 BN_MOMENTUM = 0.1
-align_corners = cfg.MODEL.ALIGN_CORNERS
+align_corners =True
 relu_inplace = True
 
 def Norm2d(in_channels, **kwargs):
@@ -464,8 +463,6 @@ class HighResolutionNet(nn.Module):
                                if k in model_dict.keys()}
             model_dict.update(pretrained_dict)
             self.load_state_dict(model_dict)
-        elif pretrained:
-            raise RuntimeError('No such file {}'.format(pretrained))
 
 
 def get_seg_model(cfg):
