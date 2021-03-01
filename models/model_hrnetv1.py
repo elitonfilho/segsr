@@ -439,7 +439,7 @@ class HighResolutionNet(nn.Module):
 
         feats = torch.cat([x[0], x1, x2, x3], 1)
 
-        return None, None, feats
+        return feats
 
     def init_weights(self, pretrained=''):
         for name, m in self.named_modules():
