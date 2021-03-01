@@ -1,11 +1,3 @@
-# Most of the code below is from the following repo:
-#  https://github.com/HRNet/HRNet-Semantic-Segmentation/tree/HRNet-OCR
-#
-# ------------------------------------------------------------------------------
-# Copyright (c) Microsoft
-# Licensed under the MIT License.
-# Written by Ke Sun (sunk@mail.ustc.edu.cn), Jingyi Xie (hsfzxjy@gmail.com)
-# ------------------------------------------------------------------------------
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -267,8 +259,8 @@ blocks_dict = {
 
 class HighResolutionNet(nn.Module):
 
-    def __init__(self, **kwargs):
-        extra = cfg.MODEL.OCR_EXTRA
+    def __init__(self, config, **kwargs):
+        extra = config.hrnet
         super(HighResolutionNet, self).__init__()
 
         # stem net
@@ -461,11 +453,9 @@ class HighResolutionNet(nn.Module):
 
         return None, None, feats
 
-    def init_weights(self, pretrained=cfg.MODEL.HRNET_CHECKPOINT):
-        # logx.msg('=> init weights from normal distribution')
+    def init_weights(self, pretrained=''):
         for name, m in self.named_modules():
             if any(part in name for part in {'cls', 'aux', 'ocr'}):
-                # print('skipped', name)
                 continue
             if isinstance(m, nn.Conv2d):
                 nn.init.normal_(m.weight, std=0.001)
@@ -475,7 +465,6 @@ class HighResolutionNet(nn.Module):
         if os.path.isfile(pretrained):
             pretrained_dict = torch.load(pretrained,
                                          map_location={'cuda:0': 'cpu'})
-            # logx.msg('=> loading pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()
             pretrained_dict = {k.replace('last_layer',
                                          'aux_head').replace('model.', ''): v
@@ -490,8 +479,8 @@ class HighResolutionNet(nn.Module):
             raise RuntimeError('No such file {}'.format(pretrained))
 
 
-def get_seg_model():
-    model = HighResolutionNet()
-    model.init_weights()
+def get_seg_model(cfg):
+    model = HighResolutionNet(config=cfg)
+    model.init_weights(pretrained=cfg.TRAIN.path_pretrained_seg)
 
     return model
