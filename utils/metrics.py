@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 import numpy as np
 from PIL import Image
 import cv2
@@ -11,7 +12,6 @@ def calculate_psnr(img1, img2):
     if mse == 0:
         return float('inf')
     return 20 * math.log10(255.0 / math.sqrt(mse))
-
 
 def ssim(img1, img2):
     C1 = (0.01 * 255)**2
@@ -35,7 +35,6 @@ def ssim(img1, img2):
                                                             (sigma1_sq + sigma2_sq + C2))
     return ssim_map.mean()
 
-
 def calculate_ssim(img1, img2):
     if not img1.shape == img2.shape:
         raise ValueError('Input images must have the same dimensions.')
@@ -53,18 +52,22 @@ def calculate_ssim(img1, img2):
         raise ValueError('Wrong input image dimensions.')
 
 if __name__ == "__main__":
-    img1 = Image.open('results/seg.png').resize((256,256), resample=Image.BICUBIC)
-    img1 = np.array(img1)
-    img2 = Image.open('results/noseg.png').resize((256,256), resample=Image.BICUBIC)
-    img2 = np.array(img2)
-    imgHR = Image.open('data/HR/2953-3-SO_0_HR.png')
-    # w, h = imgHR.size
-    # imgHR = imgHR.resize((4*w, 4*h), resample=Image.BICUBIC)
-    imgHR = np.array(imgHR)
-    # 1: Com seg, 2: Sem Seg
-    print('1 e 2', calculate_psnr(img1, img2))
-    print('1 e HR', calculate_psnr(img1, imgHR))
-    print('2 e HR', calculate_psnr(img2, imgHR))
-    print('1 e 2', calculate_ssim(img1, img2))
-    print('1 e HR', calculate_ssim(img1, imgHR))
-    print('2 e HR', calculate_ssim(img2, imgHR))
+
+    path_HR = sorted([x.resolve() for x in Path('').iterdir() if x.suffix == '.png'])
+    path_SR = sorted([x.resolve() for x in Path('').iterdir() if x.suffix == '.png'])
+
+    metrics = {
+        'psnr': 0,
+        'ssim': 0,
+        'lpips': 0,
+        'count': 0
+    }
+
+    for hr, sr in zip(path_HR, path_SR):
+        img_hr = np.array(Image.open(hr))
+        img_sr = np.array(Image.open(sr))
+        metrics['psnr'] += calculate_psnr(img_sr, img_hr)
+        metrics['ssim'] += calculate_ssim(img_sr, img_hr)
+        metrics['count'] += 1
+
+    print('PSNR: {} \n SSIM: {}'.format(metrics['psnr']/metrics['count'], metrics['ssim']/metrics['count']))
