@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 class LandCoverAIDataset(torch.utils.data.Dataset):
 
-    def __init__(self, img_dir):
+    def __init__(self, img_dir, **kwargs):
         super().__init__()
         self.filenames_hr = sorted([Path(x) for x in Path(img_dir).iterdir() if not '_m' in x.stem])
         self.filenames_an = list(map(lambda x: x.parent / f'{x.stem}_m{x.suffix}', self.filenames_hr))

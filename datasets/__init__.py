@@ -2,6 +2,7 @@ import importlib
 from pathlib import Path
 from .dataset_cgeo import CGEODataset
 from .dataset_landcover import LandCoverDataset
+from .dataset_landcoverai import LandCoverAIDataset
 
 # TODO: Refactor archs to accept cfg 
 # data_folder = Path(__file__).resolve().parent
