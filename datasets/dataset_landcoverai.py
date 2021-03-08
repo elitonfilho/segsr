@@ -19,7 +19,6 @@ class LandCoverAIDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         hr_img = Image.open(self.filenames_hr[index])
         width, height = hr_img.size
-        print(width, height)
         label_img = Image.open(self.filenames_an[index])
         lr_img = Resize((int(width/self.upscale),int(height/self.upscale)), interpolation=Image.BICUBIC)(hr_img)
         lr_img = ToTensor()(lr_img)
