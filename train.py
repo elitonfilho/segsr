@@ -18,14 +18,14 @@ from models.model_sr import Discriminator, Generator
 from models.model_unet import UNet
 from models.model_unet_resnet import UNetResNet
 from models.model_hrnet_C1 import SegmentationModule, getC1, getHrnetv2
-# from models.model_hrnetv1 import get_seg_model
-from models.model_hrnetv2 import get_seg_model
+from models.model_hrnetv1 import get_seg_model
 from models.rrdb_arch import RRDBNet
 from models.vgg_arch import VGG128
 from models.losses import L1Loss, MSELoss, WeightedTVLoss, PerceptualLoss, GANLoss, SegLoss
 
 from datasets import *
 from utils import pytorch_ssim
+from utils.val_utils import validate_seg
 from utils.img_utils import compose_val, tensor2img
 from utils.utils import *
 
@@ -53,10 +53,10 @@ def build_models(cfg):
 
     # TODO: Individual load paths
     if cfg.TRAIN.use_pretrained_sr:
-        netG.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_g), strict=False)
-        netD.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_d), strict=False)
+        netG.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_g))
+        netD.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_d))
     if cfg.TRAIN.use_pretrained_seg:
-        netSeg.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_seg), strict=False)
+        netSeg.load_state_dict(torch.load(cfg.TRAIN.path_pretrained_seg))
 
     return netG, netD, netSeg
 
@@ -201,7 +201,7 @@ if __name__ == '__main__':
             _use_seg = True if (cfg.TRAIN.use_seg and float(
                 epoch / cfg.TRAIN.num_epochs) >= cfg.TRAIN.begin_seg) else False
             if _use_seg and cfg.TRAIN.arch_enc == 'hrnet':
-                label_pred = netSeg(fake_img)
+                label_pred = netSeg(fake_img)[:,:cfg.DATASET.n_classes,...]
                 l_seg = seg_loss(label_pred, label)
                 g_loss = l_img + l_per + l_adv + l_tv + l_seg
             elif _use_seg and cfg.TRAIN.arch_enc == 'unet':
@@ -272,7 +272,6 @@ if __name__ == '__main__':
 
             writer.add_scalars('stats/train', running_results, epoch)
 
-        # TODO: Save val stats
         if epoch % cfg.VAL.freq == 0:
 
             netG.eval()
@@ -295,6 +294,9 @@ if __name__ == '__main__':
                         lr = lr.cuda()
                         hr = hr.cuda()
                     sr = netG(lr)
+                    # if cfg.TRAIN.use_seg:
+                    #     seg = netSeg(sr)[:,:cfg.DATASET.n_classes,...]
+                    #     validate_seg(val_seg, seg, cfg)
 
                     batch_mse = ((sr - hr) ** 2).data.mean()
                     valing_results['mse'] += batch_mse * batch_size
