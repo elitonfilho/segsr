@@ -45,10 +45,20 @@ def save_train_stats(cfg, epoch, stats):
 
 def save_val_stats(cfg, epoch, stats):
     out_path = Path(cfg.TRAIN.model_save_path, 'val_stats.csv').resolve()
-    data_frame = pd.DataFrame(
-        data={
-            'Epoch': epoch,
-            'PSNR': stats['psnr'],
-            'SSIM': stats['ssim'],
-        }, index=[0])
+    if cfg.TRAIN.use_seg:
+        data_frame = pd.DataFrame(
+            data={
+                'Epoch': epoch,
+                'PSNR': stats['psnr'],
+                'SSIM': stats['ssim'],
+                'IoU': stats['iou'],
+                'Acc': stats['acc']
+            }, index=[0])
+    else:
+        data_frame = pd.DataFrame(
+            data={
+                'Epoch': epoch,
+                'PSNR': stats['psnr'],
+                'SSIM': stats['ssim'],
+            }, index=[0])
     data_frame.to_csv(out_path, index_label='Epoch', mode='a', header=not out_path.exists())

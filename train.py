@@ -311,11 +311,6 @@ if __name__ == '__main__':
                         desc='[Stats on validation set] PSNR: %.4f dB SSIM: %.4f' % (
                             valing_results['psnr'], valing_results['ssim']))
 
-                    if cfg.VAL.visualize:
-                        val_images.extend([
-                            compose_val()(hr),
-                            compose_val()(sr)])
-
                 writer.add_scalars('stats/val', valing_results, epoch)
 
                 # Saving validation results
@@ -331,12 +326,25 @@ if __name__ == '__main__':
 
                 # Saving SR images from validation set if visualize=True
                 if cfg.VAL.visualize:
+                    if cfg.TRAIN.use_seg:
+                        val_images.extend([
+                            compose_val()(hr),
+                            compose_val()(sr),
+                            compose_val()(val_seg),
+                            compose_val()(seg)])
+                    else:
+                        val_images.extend([
+                            compose_val()(hr),
+                            compose_val()(sr),])
                     val_images = torch.stack(val_images)
                     val_images = torch.chunk(val_images, cfg.VAL.n_chunks)
                     val_save_bar = tqdm(val_images, desc='[saving training results]')
                     index = 0
                     for image in val_save_bar:
-                        image = torchvision.utils.make_grid(image, nrow=2, padding=2)
+                        if cfg.TRAIN.use_seg:
+                            image = torchvision.utils.make_grid(image, nrow=4, padding=2)
+                        else:
+                            image = torchvision.utils.make_grid(image, nrow=2, padding=2)
                         torchvision.utils.save_image(
                             image, val_out_path / f'val_epoch_{epoch}_{index}.png', padding=5)
                         index += 1
