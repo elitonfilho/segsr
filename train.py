@@ -297,8 +297,9 @@ if __name__ == '__main__':
                         hr = hr.cuda()
                     sr = netG(lr)
                     if cfg.TRAIN.use_seg:
-                        seg = netSeg(sr)[:,:cfg.DATASET.n_classes,...]
-                        validate_seg(val_seg, seg, valing_results, batch_size)
+                        seg = netSeg(sr)[:,:cfg.DATASET.n_classes,...].cuda()
+                        val_seg = val_seg.cuda()
+                        validate_seg(val_seg, seg, valing_results, batch_size, cfg)
                     batch_mse = ((sr - hr) ** 2).data.mean()
                     valing_results['mse'] += batch_mse * batch_size
                     batch_ssim = pytorch_ssim.ssim(sr, hr).item()
