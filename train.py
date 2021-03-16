@@ -282,7 +282,9 @@ if __name__ == '__main__':
 
             with torch.no_grad():
                 val_bar = tqdm(val_loader)
-                valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 'batch_sizes': 0}
+                valing_results = {'mse': 0, 'ssims': 0, 'psnr': 0, 'ssim': 0, 
+                'batch_sizes': 0, 'acc': 0, 'iou': 0, 'accs': 0, 'ious': 0, 
+                'cmatrix': torch.zeros(cfg.DATASET.n_classes,cfg.DATASET.n_classes)}
 
                 val_images = []
                 for val_lr, val_hr, val_seg in val_bar:
@@ -294,10 +296,9 @@ if __name__ == '__main__':
                         lr = lr.cuda()
                         hr = hr.cuda()
                     sr = netG(lr)
-                    # if cfg.TRAIN.use_seg:
-                    #     seg = netSeg(sr)[:,:cfg.DATASET.n_classes,...]
-                    #     validate_seg(val_seg, seg, cfg)
-
+                    if cfg.TRAIN.use_seg:
+                        seg = netSeg(sr)[:,:cfg.DATASET.n_classes,...]
+                        validate_seg(val_seg, seg, valing_results, batch_size)
                     batch_mse = ((sr - hr) ** 2).data.mean()
                     valing_results['mse'] += batch_mse * batch_size
                     batch_ssim = pytorch_ssim.ssim(sr, hr).item()
