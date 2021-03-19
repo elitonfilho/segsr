@@ -51,32 +51,40 @@ def calculate_ssim(img1, img2):
     else:
         raise ValueError('Wrong input image dimensions.')
 
-def calculate_seg_stats(mask, seg):
+def calculate_seg_stats(mask, seg, metrics_seg):
     acc = (mask == seg).sum()
     labels = np.unique((*np.unique(mask),*np.unique(seg)))
-    i_labels = {x:0 for x in labels}
-    acc_labels = {x:0 for x in labels}
     for i in labels:
-        acc = (mask[mask == i] == seg[seg == i])
-    intersection = (mask & seg).sum()
-    union = (mask | seg).sum()
-    print(intersection, union, acc)
+        metrics_seg[i]['intersection'] += np.sum(np.logical_and(mask==i, seg==i), keepdims=False)
+        metrics_seg[i]['union'] += np.sum(np.logical_or(mask==i, seg==i), keepdims=False)
+        metrics_seg[i]['accumulator'] += len(mask[mask==i])
+
 if __name__ == "__main__":
 
-    path_HR = sorted([x.resolve() for x in Path(r'D:\datasets\landcover.ai\val_hr').iterdir() if x.suffix == '.png'])
-    path_mask = map(lambda x: Path(r'D:\datasets\landcover.ai\mval_hr', x.name), path_HR)
+    path_HR = sorted([x.resolve() for x in Path(r'C:\Users\Eliton\Documents\master\segsr\data\rexp1-hrnet-lcai').iterdir() if x.suffix == '.png'])
+    path_mask = map(lambda x: Path(r'C:\Users\Eliton\Documents\master\segsr\data\mval_hr', x.name), path_HR)
     path_SR = map(lambda x: Path(r'D:\ml\rexp7-hrnet-lcai-nopresr', x.name), path_HR)
-    path_seg = map(lambda x: Path(r'D:\ml\mrexp7-hrnet-lcai-nopresr', x.name), path_HR)
+    path_seg = map(lambda x: Path(r'C:\Users\Eliton\Documents\master\segsr\data\mrexp1-hrnet-lcai', x.name), path_HR)
     lpips = Path(r'D:\ml\rexp7-hrnet-lcai-nopresr.txt').open(encoding='utf-8').readlines()
     results = map(lambda x: float(x.replace('\n', '').strip().split(':')[-1]), lpips)
     reduced = sum(results)/len(lpips)
+
     metrics = {
         'psnr': 0,
         'ssim': 0,
-        'lpips': reduced,
+        'lpips': 0,
         'count': 0
     }
 
+    metrics_seg = {
+        i: {
+            'intersection': 0,
+            'union': 0,
+            'accumulator': 0
+        } for i in range(0,4)
+    }
+
+    # Metrics
     for hr, sr in zip(path_HR, path_SR):
         img_hr = np.array(Image.open(hr))
         img_sr = np.array(Image.open(sr))
@@ -84,12 +92,19 @@ if __name__ == "__main__":
         metrics['ssim'] += calculate_ssim(img_sr, img_hr)
         metrics['count'] += 1
 
+    # Metrics seg
     for mask, seg in zip(path_mask, path_seg):
+        img_mask = np.array(Image.open(mask))
         img_seg = np.array(Image.open(seg))
-        calculate_seg_stats(img_mask, img_seg)
+        calculate_seg_stats(img_mask, img_seg, metrics_seg)
+
+    for values in metrics_seg.values():
+        values['acc'] = values['intersection'] / values['accumulator']
 
 
     print('PSNR: {} \nSSIM: {}\nLPIPS: {}'.format(
         metrics['psnr']/metrics['count'],
         metrics['ssim']/metrics['count'],
         metrics['lpips']))
+    
+    print(metrics_seg)
