@@ -51,15 +51,29 @@ def calculate_ssim(img1, img2):
     else:
         raise ValueError('Wrong input image dimensions.')
 
+def calculate_seg_stats(mask, seg):
+    acc = (mask == seg).sum()
+    labels = np.unique((*np.unique(mask),*np.unique(seg)))
+    i_labels = {x:0 for x in labels}
+    acc_labels = {x:0 for x in labels}
+    for i in labels:
+        acc = (mask[mask == i] == seg[seg == i])
+    intersection = (mask & seg).sum()
+    union = (mask | seg).sum()
+    print(intersection, union, acc)
 if __name__ == "__main__":
 
-    path_HR = sorted([x.resolve() for x in Path('').iterdir() if x.suffix == '.png'])
-    path_SR = sorted([x.resolve() for x in Path('').iterdir() if x.suffix == '.png'])
-
+    path_HR = sorted([x.resolve() for x in Path(r'D:\datasets\landcover.ai\val_hr').iterdir() if x.suffix == '.png'])
+    path_mask = map(lambda x: Path(r'D:\datasets\landcover.ai\mval_hr', x.name), path_HR)
+    path_SR = map(lambda x: Path(r'D:\ml\rexp7-hrnet-lcai-nopresr', x.name), path_HR)
+    path_seg = map(lambda x: Path(r'D:\ml\mrexp7-hrnet-lcai-nopresr', x.name), path_HR)
+    lpips = Path(r'D:\ml\rexp7-hrnet-lcai-nopresr.txt').open(encoding='utf-8').readlines()
+    results = map(lambda x: float(x.replace('\n', '').strip().split(':')[-1]), lpips)
+    reduced = sum(results)/len(lpips)
     metrics = {
         'psnr': 0,
         'ssim': 0,
-        'lpips': 0,
+        'lpips': reduced,
         'count': 0
     }
 
@@ -70,4 +84,12 @@ if __name__ == "__main__":
         metrics['ssim'] += calculate_ssim(img_sr, img_hr)
         metrics['count'] += 1
 
-    print('PSNR: {} \n SSIM: {}'.format(metrics['psnr']/metrics['count'], metrics['ssim']/metrics['count']))
+    for mask, seg in zip(path_mask, path_seg):
+        img_seg = np.array(Image.open(seg))
+        calculate_seg_stats(img_mask, img_seg)
+
+
+    print('PSNR: {} \nSSIM: {}\nLPIPS: {}'.format(
+        metrics['psnr']/metrics['count'],
+        metrics['ssim']/metrics['count'],
+        metrics['lpips']))
