@@ -13,6 +13,16 @@ from torch.utils.data.dataset import Dataset
 from torchvision.transforms import (CenterCrop, Compose, Normalize, RandomCrop,
                                     Resize, ToPILImage, ToTensor, functional)
 
+aug_train = alb.Compose([
+    alb.VerticalFlip(p=0.5),
+    alb.HorizontalFlip(p=0.5),
+    alb.Transpose(p=0.5),
+    alb.RandomRotate90(p=0.5),
+    ToTensorV2()
+],
+    additional_targets={
+    'image_lr': 'image'
+})
 
 class LandCoverDataset(Dataset):
     def __init__(self, dataset_dir, crop_size, upscale_factor, use_aug=None):
@@ -29,17 +39,18 @@ class LandCoverDataset(Dataset):
         lr_image = cv2.resize(hr_image, dsize=self.resize_lr, interpolation=cv2.INTER_CUBIC)
         lr_image = lr_image.astype(np.uint8)
         seg_image = load_img[8]
+        print(type(hr_image),type(lr_image),type(seg_image))
         if self.aug:
             transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
             lr_image = transformed['image_lr']
             hr_image = transformed['image']
             seg_image = transformed['mask']
-        elif not self.aug:
+        else:
             # TODO: normalize
             hr_image = ToTensor()(hr_image)
             lr_image = ToTensor()(lr_image)
             seg_image = torch.tensor(seg_image)
-            return lr_image, hr_image, seg_image
+        return lr_image, hr_image, seg_image
 
     def __len__(self):
         return len(self.image_filenames)
@@ -47,10 +58,10 @@ class LandCoverDataset(Dataset):
 
 def debug():
     train_set = LandCoverDataset(
-        'D:\\de_1m_2013_extended-val_patches',
+        'D:\\datasets\\landcover\\train',
         crop_size=256,
         upscale_factor=4,
-        use_aug=False)
+        use_aug=True)
 
     lr, hr, mask = train_set[0]
     print(type(lr), lr.dtype, lr.shape)
