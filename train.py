@@ -31,7 +31,6 @@ from utils.utils import *
 
 # TODO: Dynamic instantiation
 
-
 def build_models(cfg):
     # netG = Generator(cfg.TRAIN.upscale_factor)
     # netG = Discriminator()
