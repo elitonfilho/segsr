@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from trainer import train
+from scripts import train
 
 @hydra.main(config_name="config/default.yaml")
 def main(cfg : DictConfig) -> None:

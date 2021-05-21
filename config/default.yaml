@@ -1,4 +1,7 @@
 mode: train
+gpus: [0,1,2]
+dist_type: ddp # or dp, for DataParallel
+backend: 'nccl'
 
 dataloader:
   train: 
@@ -43,7 +46,7 @@ archs:
     n_classes: *nclass
 
 trainer:
-  _trainer_: 
+  _trainer_: trainer.default_trainer.DefaultTrainer
   optimizer:
     type:
     lr:

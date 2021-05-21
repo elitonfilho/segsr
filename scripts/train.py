@@ -6,6 +6,7 @@ import logging
 import models
 import dataloaders
 import losses
+from utils import distributed
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,8 @@ def train(cfg: DictConfig) -> None:
     Args:
         cfg (Dict): hydra configuration file
     '''
-    
+    # Initialize distributed
+    # distributed.setup_dist(cfg)
     # create model
     print('0')
     model = models.get_models(cfg)
@@ -25,9 +27,9 @@ def train(cfg: DictConfig) -> None:
     loss = losses.get_losses(cfg)
     print('2')
     # create dataset
-    datasets = dataloaders.get_dataloaders(cfg)
+    dataloader = dataloaders.get_dataloaders(cfg)
     print('3')
     # create optimizer
-    trainer = instantiate(cfg.trainer, model, loss, datasets)
+    trainer = instantiate(cfg.trainer, model, loss, dataloader)
     # fit!
     trainer.fit()
