@@ -10,24 +10,24 @@ backend: 'nccl'
 dataloader:
   train: 
     _target_: dataloaders.CGEODataset
-    path_hr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-l1
-    path_lr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-4xdown-l1
-    path_seg: C:\Users\eliton\Documents\ml\datasets\cgeoNew\m512-l1
+    path_lr: D:\datasets\cgeo\lr
+    path_hr: D:\datasets\cgeo\hr
+    path_seg: D:\datasets\cgeo\annotation
   val:
     _target_: dataloaders.CGEODataset
-    path_hr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-l1
-    path_lr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-4xdown-l1
-    path_seg: C:\Users\Eliton\Documents\master\unet\data\train\annotation
+    path_lr: D:\datasets\cgeo\lr
+    path_hr: D:\datasets\cgeo\hr
+    path_seg: D:\datasets\cgeo\annotation
   test:
     _target_: dataloaders.CGEODataset
-    path_hr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-l1
     path_lr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-4xdown-l1
+    path_hr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-l1
     path_seg: C:\Users\Eliton\Documents\master\unet\data\train\annotation
-  batch_size: 16
+  batch_size: 1
   n_classes: &nclass 4
-  weight_classes: &wclass []
-  prefetch: 2
-  num_workers: 4
+  weight_classes: &wclass [1.,1.,1.,1.]
+  prefetch: 1
+  num_workers: 1
   pin_memory: False
   drop_last: True
   shuffle: True

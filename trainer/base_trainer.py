@@ -20,6 +20,14 @@ class BaseTrainer(abc.ABC):
     def fit(self):
         pass
 
+    # @abc.abstractmethod
+    def train_validation(self):
+        pass
+
+    # @abc.abstractmethod
+    def val_validation(self):
+        pass
+
     @staticmethod
     def save_state_dict(model, save_path):
         torch.save(model.state_dict(), save_path)

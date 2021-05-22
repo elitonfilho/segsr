@@ -20,16 +20,12 @@ def train(cfg: DictConfig) -> None:
     # Initialize distributed
     distributed.setup_dist(cfg)
     # create model
-    print('s0')
     model = models.get_models(cfg)
-    print('s1')
     # create losses
     loss = losses.get_losses(cfg)
-    print('s2')
     # create dataset
     dataloader = dataloaders.get_dataloaders(cfg)
-    print('s3')
     # create optimizer
     trainer = instantiate(cfg.trainer, cfg, model, loss, dataloader)
     # fit!
-    # trainer.fit()
+    trainer.fit()

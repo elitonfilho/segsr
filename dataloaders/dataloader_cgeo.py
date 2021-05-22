@@ -31,20 +31,20 @@ aug_train = alb.Compose([
 })
 
 class CGEODataset(Dataset):
-    def __init__(self, path_hr, path_lr, path_seg=None, aug=None):
+    def __init__(self, path_lr, path_hr, path_seg=None, aug=None):
         super(CGEODataset, self).__init__()
-        path_hr = Path(path_hr)
         path_lr = Path(path_lr)
+        path_hr = Path(path_hr)
         path_seg = Path(path_seg)
-        filenames = [x for x in Path(path_hr).iterdir() if x.suffix in ('.png', '.jpeg')]
-        self.hr_images = [path_hr / x for x in filenames]
+        filenames = [x.name for x in Path(path_hr).iterdir() if x.suffix in ('.png', '.jpeg')]
         self.lr_images = [path_lr / x for x in filenames]
+        self.hr_images = [path_hr / x for x in filenames]
         self.seg_images = [path_seg / x for x in filenames]
-        self.aug = aug_train
+        self.aug = False
 
     def __getitem__(self, index):
-        hr_image = np.array(Image.open(self.hr_images[index]), dtype=np.uint8)
         lr_image = np.array(Image.open(self.lr_images[index]), dtype=np.uint8)
+        hr_image = np.array(Image.open(self.hr_images[index]), dtype=np.uint8)
         seg_image = np.array(Image.open(self.seg_images[index]), dtype=np.int32)
         if self.aug:
             transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
@@ -62,10 +62,10 @@ class CGEODataset(Dataset):
 
 def debug():
     train_set = CGEODataset(
-        'C:\\Users\\eliton\\Documents\\ml\\datasets\\train',
-        crop_size=256,
-        upscale_factor=4,
-        use_aug=True)
+        'D:\datasets\cgeo\lr',
+        'D:\datasets\cgeo\hr',
+        r'D:\datasets\cgeo\annotation'
+        )
 
     lr, hr, mask = train_set[0]
     print(type(lr), lr.dtype, lr.shape)
