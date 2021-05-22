@@ -1,5 +1,9 @@
+defaults:
+  - hydra/launcher: joblib
+
 mode: train
-gpus: [0,1,2]
+rank:
+gpus: [0]
 dist_type: ddp # or dp, for DataParallel
 backend: 'nccl'
 
@@ -46,14 +50,14 @@ archs:
     n_classes: *nclass
 
 trainer:
-  _trainer_: trainer.default_trainer.DefaultTrainer
+  _target_: trainer.default_trainer.DefaultTrainer
   optimizer:
-    type:
-    lr:
+    _target_: torch.optim.Adam
+    lr: 1e-4
   scheduler:
-    type:
-    milestones:
-    gamma:
+    _target_: torch.optim.lr_scheduler.MultiStepLR
+    milestones: [0,10]
+    gamma: 0.9
   use_seg: True
   arch_enc: 'unet'
   use_pretrained_seg: True

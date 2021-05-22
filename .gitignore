@@ -3,6 +3,8 @@ data/
 training_results/
 epochs/
 results/
+multirun/
+outputs/
 *.png
 *.aux.xml
 

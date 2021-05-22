@@ -1,44 +1,63 @@
 import abc
 import torch
 from torch.nn.parallel import DistributedDataParallel, DataParallel
+import logging
+from hydra.utils import instantiate
 
-class BaseTrainer(abc.ABCMeta):
+logger = logging.getLogger('main')
+
+class BaseTrainer(abc.ABC):
     '''
     Base trainer. Should be used when defining training strategies.
     '''
     def __init__(self, *args, **kwargs) -> None:
-        self.cfg, self.model, self.loss, self.dataloader = args
+        self.cfg, self.models, self.losses, self.dataloaders = args
         self.initialize_distributed()
+        self.optimizers = self.setup_optimizers()
+        self.schedulers = self.setup_schedulers()
     
     @abc.abstractmethod
     def fit(self):
         pass
 
-    @abc.abstractmethod
-    def save_state_dict(self):
-        pass
+    @staticmethod
+    def save_state_dict(model, save_path):
+        torch.save(model.state_dict(), save_path)
 
-    @abc.abstractmethod
-    def load_state_dict(self):
-        pass
+    @staticmethod
+    def load_state_dict(model, load_path):
+        model.load_state_dict(torch.load(load_path))
     
-    @abc.abstractmethod
     def setup_optimizers(self):
-        pass
+        optimizers = {}
+        for name, model in self.models.items():
+            optimizer = instantiate(self.cfg.trainer.optimizer, model.parameters())
+            optimizers.update({name: optimizer})
+            if not optimizer:
+                logger.critical(f'Optimizer {self.cfg.trainer.optimizer} not found.')
+        return optimizers
 
-    @abc.abstractmethod
     def setup_schedulers(self):
-        pass
+        schedulers = {}
+        for name, optimizer in self.optimizers.items():
+            scheduler = instantiate(self.cfg.trainer.scheduler, optimizer)
+            if not scheduler:
+                logger.critical(f'Scheduler {self.cfg.trainer.scheduler} not found.')
+            schedulers.update({name: scheduler})
+        return schedulers
 
     def initialize_distributed(self):
-        if self.cfg.dist_type == 'ddp':
-            self.model = DistributedDataParallel(
-                self.model,
-
-            )
-        elif self.cfg.dist_type == 'dp':
-            self.model = DataParallel(
-                self.model,
-                self.cfg.gpus,
-                torch.device('gpu:0')
-            )
+        if len(self.cfg.gpus) > 1:
+            if self.cfg.dist_type == 'ddp' :
+                torch.cuda.set_device(self.cfg.rank)
+                self.model = DistributedDataParallel(
+                    self.model,
+                    self.cfg.gpus,
+                    torch.device('gpu:0')
+                )
+            elif self.cfg.dist_type == 'dp':
+                self.model = DataParallel(
+                    self.model,
+                    self.cfg.gpus,
+                    torch.device('gpu:0')
+                )

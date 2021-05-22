@@ -20,6 +20,5 @@ def import_modelsv1(cfg):
 def get_models(cfg: DictConfig) -> Dict:
     models = {}
     for model in cfg.archs:
-        print(model)
         models.update({model: instantiate(cfg.archs.get(model))})
     return models
