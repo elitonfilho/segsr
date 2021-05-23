@@ -104,6 +104,8 @@ trainer:
     n_chunks: 3
   metrics:
     train:
+      - psnr
+      - ssim
     val:
       - psnr
       - ssim

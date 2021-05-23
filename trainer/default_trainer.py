@@ -79,7 +79,7 @@ class DefaultTrainer(BaseTrainer):
                 d_fake = netD(fake_img).mean()
                 d_real = netD(hr_img).mean()
 
-                print(self.val_metrics, dir(self.val_metrics))
+                print(self.val_metrics,self.val_metrics[0].__dict__())
 
                 print(l_img, l_per, l_tv, l_adv)
                 if epoch % self.cfg.trainer.validation.freq == 0:
