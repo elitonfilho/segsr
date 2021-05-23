@@ -16,7 +16,9 @@ class AverageMeter:
         for key in self.meter.keys():
             if delta.get(key):
                 self.meter[key] += delta[key]
-
+    
+    def __str__(self) -> str:
+        print(' '.join(f'{key}:{value}' for key, value in self.meter.items()))
 
 
 def create_pretrain_folder(args, cfg):

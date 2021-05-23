@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import logging
+from torch.tensor import Tensor
 
 logger = logging.getLogger('main')
 
@@ -15,36 +16,47 @@ def get_metrics(metric):
     else:
         raise NotImplementedError(f'Metric {metric} not implemented')
 
-def psnr(img1, img2):
+def psnr(img1: Tensor, img2: Tensor) -> float:
     # img1 and img2 have range [0, 255]
-    img1 = img1.astype(np.float64)
-    img2 = img2.astype(np.float64)
-    mse = np.mean((img1 - img2)**2)
-    if mse == 0:
-        return float('inf')
-    return 20 * math.log10(255.0 / math.sqrt(mse))
+    total = 0
+    to_calculate = [(img1[i].squeeze(),img2[i].squeeze()) for i in range(img1.shape[0])]
+    for (img1, img2) in to_calculate:
+        img1 = img1.detach().cpu().numpy()
+        img2 = img2.detach().cpu().numpy()
+        mse = np.mean((img1 - img2)**2)
+        if mse == 0:
+            return float('inf')
+        total += 20 * math.log10(255.0 / math.sqrt(mse))
+        print('psnr', total)
+    return total
 
-def ssim(img1, img2):
+def ssim(img1: Tensor, img2: Tensor) -> float:
     C1 = (0.01 * 255)**2
     C2 = (0.03 * 255)**2
 
-    img1 = img1.astype(np.float64)
-    img2 = img2.astype(np.float64)
-    kernel = cv2.getGaussianKernel(11, 1.5)
-    window = np.outer(kernel, kernel.transpose())
+    total = 0
+    to_calculate = [(img1[i].squeeze(),img2[i].squeeze()) for i in range(img1.shape[0])]
+    for (img1, img2) in to_calculate:
+        img1 = img1.detach().cpu().numpy()
+        img2 = img2.detach().cpu().numpy()
 
-    mu1 = cv2.filter2D(img1, -1, window)[5:-5, 5:-5]  # valid
-    mu2 = cv2.filter2D(img2, -1, window)[5:-5, 5:-5]
-    mu1_sq = mu1**2
-    mu2_sq = mu2**2
-    mu1_mu2 = mu1 * mu2
-    sigma1_sq = cv2.filter2D(img1**2, -1, window)[5:-5, 5:-5] - mu1_sq
-    sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
-    sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
+        kernel = cv2.getGaussianKernel(11, 1.5)
+        window = np.outer(kernel, kernel.transpose())
 
-    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) *
-                                                            (sigma1_sq + sigma2_sq + C2))
-    return ssim_map.mean()
+        mu1 = cv2.filter2D(img1, -1, window)[5:-5, 5:-5]  # valid
+        mu2 = cv2.filter2D(img2, -1, window)[5:-5, 5:-5]
+        mu1_sq = mu1**2
+        mu2_sq = mu2**2
+        mu1_mu2 = mu1 * mu2
+        sigma1_sq = cv2.filter2D(img1**2, -1, window)[5:-5, 5:-5] - mu1_sq
+        sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
+        sigma12 = cv2.filter2D(img1 * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
+
+        ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) *
+                                                                (sigma1_sq + sigma2_sq + C2))
+        total += ssim_map.mean()
+        print(total)
+    return total
 
 def calculate_ssim(img1, img2):
     if not img1.shape == img2.shape:

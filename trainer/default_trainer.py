@@ -79,7 +79,7 @@ class DefaultTrainer(BaseTrainer):
                 d_fake = netD(fake_img).mean()
                 d_real = netD(hr_img).mean()
 
-                print(self.val_metrics,self.val_metrics[0].__dict__())
+                print(self.val_metrics,self.val_metrics[0].__name__)
 
                 print(l_img, l_per, l_tv, l_adv)
                 if epoch % self.cfg.trainer.validation.freq == 0:
@@ -88,7 +88,7 @@ class DefaultTrainer(BaseTrainer):
             schedulerD.step()
             schedulerG.step()
 
-    def validate(self, images):
+    def validate(self):
         val_set: DataLoader = self.dataloaders['val']
 
         netG: Module = self.models['netG'].eval()
@@ -96,13 +96,18 @@ class DefaultTrainer(BaseTrainer):
 
         val_metrics = self.val_metrics
 
-        val_stats = AverageMeter()
+        val_stats = AverageMeter(('count', *(x.__name__ for x in self.val_metrics)))
 
         for lr_img, hr_img, seg_img in val_set:
             hr_img = hr_img.float().cuda()
             lr_img = lr_img.float().cuda()
             sr_img = netG(lr_img)
-            seg_img =netSeg(seg_img)
+            seg_img = netSeg(sr_img)
+
+            results = {'count': lr_img.shape[0]}
+            results.update({f.__name__: f(sr_img, hr_img) for f in self.val_metrics})
+            val_stats.update(results)
+        print(val_stats)
 
 
 
