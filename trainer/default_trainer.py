@@ -1,9 +1,11 @@
 import torch
 from torch.nn import Module
+from torch.optim import Optimizer
 from torch.utils.data.dataloader import DataLoader
 from scripts.train import train
 from .base_trainer import BaseTrainer
 from hydra.utils import instantiate
+from utils.utils import AverageMeter
 import logging
 
 logger = logging.getLogger('main')
@@ -15,14 +17,16 @@ class DefaultTrainer(BaseTrainer):
     def fit(self):
 
         train_set: DataLoader = self.dataloaders['train']
-        val_set: DataLoader = self.dataloaders['val']
 
         netG: Module = self.models['netG'].cuda().train()
         netD: Module = self.models['netD'].cuda().train()
         netSeg: Module = self.models['netSeg'].cuda().eval()
 
-        optimizerG = self.optimizers['netG']
-        optimizerD = self.optimizers['netD']
+        optimizerG: Optimizer = self.optimizers['netG']
+        optimizerD: Optimizer = self.optimizers['netD']
+
+        schedulerG = self.schedulers['netG']
+        schedulerD = self.schedulers['netD']
 
         img_loss = self.losses['il'].cuda()
         adv_loss = self.losses['adv'].cuda()
@@ -30,7 +34,7 @@ class DefaultTrainer(BaseTrainer):
         tv_loss = self.losses['tv'].cuda()
         seg_loss = self.losses['seg'].cuda()
 
-        for i in range(self.cfg.trainer.num_epochs):
+        for epoch in range(self.cfg.trainer.num_epochs):
             for lr_img, hr_img, seg_img in train_set:
 
                 lr_img = lr_img.cuda().float()
@@ -74,7 +78,33 @@ class DefaultTrainer(BaseTrainer):
                 fake_img = netG(lr_img)
                 d_fake = netD(fake_img).mean()
                 d_real = netD(hr_img).mean()
+
+                print(self.val_metrics, dir(self.val_metrics))
+
                 print(l_img, l_per, l_tv, l_adv)
+                if epoch % self.cfg.trainer.validation.freq == 0:
+                    self.validate()
+
+            schedulerD.step()
+            schedulerG.step()
+
+    def validate(self, images):
+        val_set: DataLoader = self.dataloaders['val']
+
+        netG: Module = self.models['netG'].eval()
+        netSeg: Module = self.models['netSeg'].eval()
+
+        val_metrics = self.val_metrics
+
+        val_stats = AverageMeter()
+
+        for lr_img, hr_img, seg_img in val_set:
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
+            seg_img =netSeg(seg_img)
+
+
 
 
 

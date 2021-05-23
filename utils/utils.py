@@ -4,6 +4,20 @@ import torch
 import pandas as pd
 from datetime import datetime
 
+from torch.nn import init
+
+class AverageMeter:
+    def __init__(self, *args) -> None:
+        self.meter = dict()
+        for x in args:
+            self.meter.update({x: 0})
+
+    def update(self, delta: dict) -> None:
+        for key in self.meter.keys():
+            if delta.get(key):
+                self.meter[key] += delta[key]
+
+
 
 def create_pretrain_folder(args, cfg):
     if cfg.TRAIN.model_save_path:

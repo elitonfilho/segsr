@@ -1,8 +1,10 @@
 import abc
+from utils import val_utils
 import torch
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 import logging
 from hydra.utils import instantiate
+from utils.metrics import get_metrics
 
 logger = logging.getLogger('main')
 
@@ -15,17 +17,10 @@ class BaseTrainer(abc.ABC):
         self.initialize_distributed()
         self.optimizers = self.setup_optimizers()
         self.schedulers = self.setup_schedulers()
+        self.train_metrics, self.val_metrics = self.setup_metrics()
     
     @abc.abstractmethod
     def fit(self):
-        pass
-
-    # @abc.abstractmethod
-    def train_validation(self):
-        pass
-
-    # @abc.abstractmethod
-    def val_validation(self):
         pass
 
     @staticmethod
@@ -53,6 +48,15 @@ class BaseTrainer(abc.ABC):
                 logger.critical(f'Scheduler {self.cfg.trainer.scheduler} not found.')
             schedulers.update({name: scheduler})
         return schedulers
+
+    def setup_metrics(self):
+        train_metrics = []
+        val_metrics = []
+        for metric in self.cfg.trainer.metrics.train:
+            train_metrics.append(get_metrics(metric))
+        for metric in self.cfg.trainer.metrics.val:
+            val_metrics.append(get_metrics(metric))
+        return train_metrics, val_metrics
 
     def initialize_distributed(self):
         if len(self.cfg.gpus) > 1:

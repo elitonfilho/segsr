@@ -3,8 +3,19 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import cv2
+import logging
 
-def calculate_psnr(img1, img2):
+logger = logging.getLogger('main')
+
+def get_metrics(metric):
+    if metric == 'psnr':
+        return psnr
+    elif metric == 'ssim':
+        return ssim
+    else:
+        raise NotImplementedError(f'Metric {metric} not implemented')
+
+def psnr(img1, img2):
     # img1 and img2 have range [0, 255]
     img1 = img1.astype(np.float64)
     img2 = img2.astype(np.float64)
@@ -88,7 +99,7 @@ if __name__ == "__main__":
     for hr, sr in zip(path_HR, path_SR):
         img_hr = np.array(Image.open(hr))
         img_sr = np.array(Image.open(sr))
-        metrics['psnr'] += calculate_psnr(img_sr, img_hr)
+        metrics['psnr'] += psnr(img_sr, img_hr)
         metrics['ssim'] += calculate_ssim(img_sr, img_hr)
         metrics['count'] += 1
 

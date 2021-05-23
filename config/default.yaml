@@ -2,6 +2,7 @@ defaults:
   - hydra/launcher: joblib
 
 mode: train
+name: Test1
 rank:
 gpus: [0]
 dist_type: ddp # or dp, for DataParallel
@@ -96,12 +97,17 @@ trainer:
       _target_: losses.SegLoss
       loss_weight: 1.0
       weight_classes: *wclass
-
-val:
-  visualize: True
-  batch_size: 1
-  freq: 10
-  n_chunks: 3
+  validation:
+    visualize: True
+    batch_size: 1
+    freq: 10
+    n_chunks: 3
+  metrics:
+    train:
+    val:
+      - psnr
+      - ssim
+    
 
 test:
   batch_size: 1
