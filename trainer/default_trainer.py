@@ -108,9 +108,3 @@ class DefaultTrainer(BaseTrainer):
             results.update({f.__name__: f(sr_img, hr_img) for f in self.val_metrics})
             val_stats.update(results)
         print(val_stats)
-
-
-
-
-
-    

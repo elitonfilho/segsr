@@ -51,7 +51,7 @@ archs:
     n_classes: *nclass
 
 trainer:
-  _target_: trainer.default_trainer.DefaultTrainer
+  _target_: trainer.ignite_trainer.IgniteTrainer
   optimizer:
     _target_: torch.optim.Adam
     lr: 1e-4
