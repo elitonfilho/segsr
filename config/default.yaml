@@ -5,8 +5,8 @@ mode: train
 name: Test1
 rank:
 gpus: [0]
-dist_type: ddp # or dp, for DataParallel
-backend: 'nccl'
+dist_type: #ddp, for DistributedDataParallel, or dp, for DataParallel
+backend: nccl
 
 dataloader:
   train: 
@@ -104,11 +104,15 @@ trainer:
     n_chunks: 3
   metrics:
     train:
-      - psnr
-      - ssim
+      psnr:
+        _target_: ignite.PSNR
+      ssim:
+        _target_: ignite.SSIM
     val:
-      - psnr
-      - ssim
+      psnr:
+        _target_: ignite.PSNR
+      ssim:
+        _target_: ignite.SSIM
     
 
 test:

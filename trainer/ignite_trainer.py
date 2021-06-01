@@ -6,10 +6,12 @@ from scripts.train import train
 from .base_trainer import BaseTrainer
 from hydra.utils import instantiate
 from utils.utils import AverageMeter
+from typing import List
 import logging
 
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
+from ignite.metrics import Metric
 
 logger = logging.getLogger('main')
 
@@ -32,9 +34,6 @@ class IgniteTrainer(BaseTrainer):
         self.per_loss = self.losses['per'].cuda()
         self.tv_loss = self.losses['tv'].cuda()
         self.seg_loss = self.losses['seg'].cuda()
-
-
-
 
     def train_step(self, engine, batch):
 
@@ -90,30 +89,36 @@ class IgniteTrainer(BaseTrainer):
         self.schedulerD.step()
         self.schedulerG.step()
 
+    def validate_step(self, batch):
 
-    def fit(self):
-        self.train_loader: DataLoader = self.dataloaders['train']
-        self.trainer = Engine(self.train_step)
-        self.trainer.run(self.train_loader)
-
-    @self.trainer.on(Events.ITERATION_COMPLETED(every=1))
-    def validate(self):
-        val_set: DataLoader = self.dataloaders['val']
+        lr_img, hr_img, seg_img = batch
 
         netG: Module = self.models['netG'].eval()
         netSeg: Module = self.models['netSeg'].eval()
 
-        val_metrics = self.val_metrics
+        hr_img = hr_img.float().cuda()
+        lr_img = lr_img.float().cuda()
+        sr_img = netG(lr_img)
+        seg_sr_img = netSeg(sr_img)
 
-        val_stats = AverageMeter(('count', *(x.__name__ for x in self.val_metrics)))
+        for metric in self.val_metrics:
+            metric.update(sr_img, hr_img)
 
-        for lr_img, hr_img, seg_img in val_set:
-            hr_img = hr_img.float().cuda()
-            lr_img = lr_img.float().cuda()
-            sr_img = netG(lr_img)
-            seg_img = netSeg(sr_img)
+    def setup_metrics(self):
+        self.train_metrics : List[Metric] = []
+        self.val_metrics : List[Metric] = []
+        for metric in self.cfg.trainer.metrics.train:
+            self.train_metrics.append(instantiate(self.cfg.trainer.metrics.train.get(metric)))
+        for metric in self.cfg.trainer.metrics.val:
+            self.val_metrics.append(instantiate(self.cfg.trainer.metrics.val.get(metric)))
 
-            results = {'count': lr_img.shape[0]}
-            results.update({f.__name__: f(sr_img, hr_img) for f in self.val_metrics})
-            val_stats.update(results)
-        print(val_stats)
+    def fit(self):
+        train_loader: DataLoader = self.dataloaders['train']
+        val_loader: DataLoader = self.dataloaders['val']
+        self.trainer = Engine(self.train_step)
+        self.validator = Engine(self.validate_step)
+        self.setup_metrics()
+        self.trainer.add_event_handler(Events.EPOCH_COMPLETED, self.validator.run, val_loader)
+        self.trainer.run(train_loader)
+        
+
