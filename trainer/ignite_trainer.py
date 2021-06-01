@@ -89,7 +89,7 @@ class IgniteTrainer(BaseTrainer):
         self.schedulerD.step()
         self.schedulerG.step()
 
-    def validate_step(self, batch):
+    def validate_step(self, engine, batch):
 
         lr_img, hr_img, seg_img = batch
 

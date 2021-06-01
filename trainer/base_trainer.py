@@ -17,7 +17,7 @@ class BaseTrainer(abc.ABC):
         self.initialize_distributed()
         self.optimizers = self.setup_optimizers()
         self.schedulers = self.setup_schedulers()
-        self.train_metrics, self.val_metrics = self.setup_metrics()
+        # self.train_metrics, self.val_metrics = self.setup_metrics()
     
     @abc.abstractmethod
     def fit(self):
