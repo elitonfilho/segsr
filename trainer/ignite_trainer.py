@@ -81,10 +81,10 @@ class IgniteTrainer(BaseTrainer):
         d_fake = self.netD(fake_img).mean()
         d_real = self.netD(hr_img).mean()
 
-        print(self.val_metrics,self.val_metrics[0].__name__)
-
         print(l_img, l_per, l_tv, l_adv)
 
+        for metric in self.train_metrics:
+            metric.update(fake_img, hr_img)
 
         self.schedulerD.step()
         self.schedulerG.step()
