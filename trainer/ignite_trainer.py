@@ -13,7 +13,7 @@ from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.metrics import Metric
 
-logger = logging.getLogger('main')
+logger = logging.getLogger(__file__)
 
 class IgniteTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs) -> None:
@@ -42,10 +42,11 @@ class IgniteTrainer(BaseTrainer):
         lr_img = lr_img.cuda().float()
         hr_img = hr_img.cuda().float()
         seg_img = seg_img.cuda().long()
-
+        
         self.netD.eval()
         self.netG.zero_grad()
         fake_img = self.netG(lr_img)
+        
         d_fake = self.netD(fake_img)
         d_real = self.netD(hr_img).detach()
 
@@ -81,16 +82,15 @@ class IgniteTrainer(BaseTrainer):
         d_fake = self.netD(fake_img).mean()
         d_real = self.netD(hr_img).mean()
 
-        print(l_img, l_per, l_tv, l_adv)
+#         print(l_img, l_per, l_tv, l_adv)
 
         for metric in self.train_metrics:
-            metric.update(fake_img, hr_img)
+            metric.update((fake_img, hr_img))
 
         self.schedulerD.step()
         self.schedulerG.step()
 
     def validate_step(self, engine, batch):
-
         lr_img, hr_img, seg_img = batch
 
         netG: Module = self.models['netG'].eval()
@@ -102,7 +102,10 @@ class IgniteTrainer(BaseTrainer):
         seg_sr_img = netSeg(sr_img)
 
         for metric in self.val_metrics:
-            metric.update(sr_img, hr_img)
+            metric.update((sr_img, hr_img))
+            
+    def run_validation(self, engine, batch):
+        self.validator.run(batch)
 
     def setup_metrics(self):
         self.train_metrics : List[Metric] = []
@@ -118,7 +121,7 @@ class IgniteTrainer(BaseTrainer):
         self.trainer = Engine(self.train_step)
         self.validator = Engine(self.validate_step)
         self.setup_metrics()
-        self.trainer.add_event_handler(Events.EPOCH_COMPLETED, self.validator.run, val_loader)
-        self.trainer.run(train_loader)
+        self.trainer.add_event_handler(Events.EPOCH_COMPLETED, self.run_validation, val_loader)
+        self.trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
         
 
