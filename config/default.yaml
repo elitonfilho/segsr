@@ -11,19 +11,19 @@ backend: nccl
 dataloader:
   train: 
     _target_: dataloaders.CGEODataset
-    path_lr: D:\datasets\cgeo\lr
-    path_hr: D:\datasets\cgeo\hr
-    path_seg: D:\datasets\cgeo\annotation
+    path_lr: C:\Users\Eliton\Documents\master\segsr\data\LR
+    path_hr: C:\Users\Eliton\Documents\master\segsr\data\HR
+    path_seg: C:\Users\Eliton\Documents\master\segsr\data\annotation
   val:
     _target_: dataloaders.CGEODataset
-    path_lr: D:\datasets\cgeo\lr
-    path_hr: D:\datasets\cgeo\hr
-    path_seg: D:\datasets\cgeo\annotation
+    path_lr: C:\Users\Eliton\Documents\master\segsr\data\LR
+    path_hr: C:\Users\Eliton\Documents\master\segsr\data\HR
+    path_seg: C:\Users\Eliton\Documents\master\segsr\data\annotation
   test:
     _target_: dataloaders.CGEODataset
-    path_lr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-4xdown-l1
-    path_hr: C:\Users\eliton\Documents\ml\datasets\cgeoNew\512-l1
-    path_seg: C:\Users\Eliton\Documents\master\unet\data\train\annotation
+    path_lr: C:\Users\Eliton\Documents\master\segsr\data\LR
+    path_hr: C:\Users\Eliton\Documents\master\segsr\data\HR
+    path_seg: C:\Users\Eliton\Documents\master\segsr\data\annotation
   batch_size: 1
   n_classes: &nclass 4
   weight_classes: &wclass [1.,1.,1.,1.]
@@ -105,14 +105,18 @@ trainer:
   metrics:
     train:
       psnr:
-        _target_: ignite.PSNR
+        _target_: ignite.metrics.PSNR
+        data_range: 1.0
       ssim:
-        _target_: ignite.SSIM
+        _target_: ignite.metrics.SSIM
+        data_range: 1.0
     val:
       psnr:
-        _target_: ignite.PSNR
+        _target_: ignite.metrics.PSNR
+        data_range: 1.0
       ssim:
-        _target_: ignite.SSIM
+        _target_: ignite.metrics.SSIM
+        data_range: 1.0
     
 
 test:
