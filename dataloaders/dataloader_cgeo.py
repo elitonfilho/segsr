@@ -36,7 +36,7 @@ class CGEODataset(Dataset):
         path_lr = Path(path_lr)
         path_hr = Path(path_hr)
         path_seg = Path(path_seg)
-        filenames = [x.name for x in Path(path_hr).iterdir() if x.suffix in ('.png', '.jpeg')]
+        filenames = [x.name for x in Path(path_hr).iterdir() if x.suffix in ('.png', '.jpeg')][:12]
         self.lr_images = [path_lr / x for x in filenames]
         self.hr_images = [path_hr / x for x in filenames]
         self.seg_images = [path_seg / x for x in filenames]

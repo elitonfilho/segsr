@@ -7,6 +7,6 @@ multirun/
 outputs/
 *.png
 *.aux.xml
-
+*.ipynb_checkpoints
 sheet.py
 .vscode/

@@ -45,12 +45,13 @@ class VGG128(nn.Module):
         self.conv4_1 = nn.Conv2d(
             num_feat * 8, num_feat * 8, 4, 2, 1, bias=False)
         self.bn4_1 = nn.BatchNorm2d(num_feat * 8, affine=True)
+        self.linear1 = nn.Linear(num_feat * 8 * 16 * 16, 100)
 
-        self.linear1 = nn.Linear(num_feat * 8 * 8 * 8, 100)
+#         self.linear1 = nn.Linear(num_feat * 8 * 8 * 8, 100)
         self.linear2 = nn.Linear(100, 1)
 
         # activation function
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=False)
 
         # self.sigmoid = nn.Sigmoid()
 
@@ -77,7 +78,8 @@ class VGG128(nn.Module):
             self.conv4_1(feat)))  # output spatial size: (4, 4)
 
         feat = feat.view(feat.size(0), -1)
-        feat = self.lrelu(self.linear1(feat))
+        feat = self.linear1(feat)
+        feat = self.lrelu(feat)
         out = self.linear2(feat)
         # return self.sigmoid(out)
         return out

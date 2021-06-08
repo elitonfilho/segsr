@@ -1,7 +1,7 @@
 import torch
 from torch.nn import Module
 from torch.optim import Optimizer
-from torch.utils.data.dataloader import DataLoader
+from torch.utils.data.dataloader import DataLoader, Dataset
 from scripts.train import train
 from .base_trainer import BaseTrainer
 from hydra.utils import instantiate
@@ -12,6 +12,7 @@ import logging
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.metrics import Metric
+import ignite.distributed as idist
 
 logger = logging.getLogger(__file__)
 
@@ -22,9 +23,16 @@ class IgniteTrainer(BaseTrainer):
         self.netG: Module = self.models['netG'].cuda().train()
         self.netD: Module = self.models['netD'].cuda().train()
         self.netSeg: Module = self.models['netSeg'].cuda().eval()
+        
+        self.netG = idist.auto_model(self.netG)
+        self.netD = idist.auto_model(self.netD)
+        self.netSeg = idist.auto_model(self.netSeg)
 
         self.optimizerG: Optimizer = self.optimizers['netG']
         self.optimizerD: Optimizer = self.optimizers['netD']
+        
+        self.optimizerG = idist.auto_optim(self.optimizerG)
+        self.optimizerD = idist.auto_optim(self.optimizerD)
 
         self.schedulerG = self.schedulers['netG']
         self.schedulerD = self.schedulers['netD']
@@ -43,11 +51,14 @@ class IgniteTrainer(BaseTrainer):
         hr_img = hr_img.cuda().float()
         seg_img = seg_img.cuda().long()
         
-        self.netD.eval()
         self.netG.zero_grad()
+        
+        self.netD.eval()
+        self.netD.requires_grad_(False)
+
         fake_img = self.netG(lr_img)
         
-        d_fake = self.netD(fake_img)
+        d_fake = self.netD(fake_img.clone().detach())
         d_real = self.netD(hr_img).detach()
 
         l_img = self.img_loss(fake_img, hr_img)
@@ -61,12 +72,16 @@ class IgniteTrainer(BaseTrainer):
         label_pred = self.netSeg(fake_img)
         l_seg = self.seg_loss(label_pred, seg_img).long()
         g_loss = l_img + l_per + l_adv + l_tv + l_seg
+
         g_loss.backward()
 
         self.optimizerG.step()
 
         self.netD.train()
+        self.netD.requires_grad_(True)
         self.netD.zero_grad()
+        
+        fake_img = self.netG(lr_img)
         
         d_fake = self.netD(fake_img).detach()
         d_real = self.netD(hr_img)
@@ -81,8 +96,6 @@ class IgniteTrainer(BaseTrainer):
         fake_img = self.netG(lr_img)
         d_fake = self.netD(fake_img).mean()
         d_real = self.netD(hr_img).mean()
-
-#         print(l_img, l_per, l_tv, l_adv)
 
         for metric in self.train_metrics:
             metric.update((fake_img, hr_img))
@@ -116,8 +129,11 @@ class IgniteTrainer(BaseTrainer):
             self.val_metrics.append(instantiate(self.cfg.trainer.metrics.val.get(metric)))
 
     def fit(self):
-        train_loader: DataLoader = self.dataloaders['train']
-        val_loader: DataLoader = self.dataloaders['val']
+        torch.autograd.set_detect_anomaly(True)
+        train_dataset: Dataset = self.dataloaders['train']
+        val_dataset: Dataset = self.dataloaders['val']
+        train_loader = idist.auto_dataloader(train_dataset, batch_size=self.cfg.trainer.batch_size)
+        val_loader = idist.auto_dataloader(val_dataset, batch_size=self.cfg.trainer.validation.batch_size)
         self.trainer = Engine(self.train_step)
         self.validator = Engine(self.validate_step)
         self.setup_metrics()
