@@ -14,7 +14,7 @@ class BaseTrainer(abc.ABC):
     '''
     def __init__(self, *args, **kwargs) -> None:
         self.cfg, self.models, self.losses, self.dataloaders = args
-        self.initialize_distributed()
+        # self.initialize_distributed()
         self.optimizers = self.setup_optimizers()
         self.schedulers = self.setup_schedulers()
         # self.train_metrics, self.val_metrics = self.setup_metrics()

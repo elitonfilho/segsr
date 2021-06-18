@@ -1,29 +1,29 @@
-defaults:
-  - hydra/launcher: joblib
+# defaults:
+#   - hydra/launcher: joblib
 
 mode: train
 name: Test1
 rank:
-gpus: [0]
+gpus: [0,1,2]
 dist_type: #ddp, for DistributedDataParallel, or dp, for DataParallel
 backend: nccl
 
 dataloader:
   train: 
     _target_: dataloaders.CGEODataset
-    path_lr: C:\Users\Eliton\Documents\master\segsr\data\LR
-    path_hr: C:\Users\Eliton\Documents\master\segsr\data\HR
-    path_seg: C:\Users\Eliton\Documents\master\segsr\data\annotation
+    path_lr: /mnt/data/eliton/datasets/cgeo/train/lr
+    path_hr: /mnt/data/eliton/datasets/cgeo/train/hr
+    path_seg: /mnt/data/eliton/datasets/cgeo/train/seg
   val:
     _target_: dataloaders.CGEODataset
-    path_lr: C:\Users\Eliton\Documents\master\segsr\data\LR
-    path_hr: C:\Users\Eliton\Documents\master\segsr\data\HR
-    path_seg: C:\Users\Eliton\Documents\master\segsr\data\annotation
+    path_lr: /mnt/data/eliton/datasets/cgeo/val/lr
+    path_hr: /mnt/data/eliton/datasets/cgeo/val/hr
+    path_seg: /mnt/data/eliton/datasets/cgeo/val/seg
   test:
     _target_: dataloaders.CGEODataset
-    path_lr: C:\Users\Eliton\Documents\master\segsr\data\LR
-    path_hr: C:\Users\Eliton\Documents\master\segsr\data\HR
-    path_seg: C:\Users\Eliton\Documents\master\segsr\data\annotation
+    path_lr: /mnt/data/eliton/datasets/cgeo/test/lr
+    path_hr: /mnt/data/eliton/datasets/cgeo/test/hr
+    path_seg: /mnt/data/eliton/datasets/cgeo/test/seg
   batch_size: 1
   n_classes: &nclass 4
   weight_classes: &wclass [1.,1.,1.,1.]
@@ -67,17 +67,15 @@ trainer:
   path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
   path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
   begin_seg: 0.
-  num_epochs: 20
+  num_epochs: 5
   scheduler_milestones: [50,100,150,200]
   scheduler_gamma: 0.1
   batch_size: 4
   crop_size: 256
   upscale_factor: 4
   lr: 1e-3
-  model_save_path: 'epochs/'
-  model_name: 'teste_seg'
+  save_path: '/mnt/data/eliton/output/${name}'
   use_aug: True
-  save_best: 'psnr'
   losses: 
     il:
       _target_: losses.L1Loss
@@ -98,10 +96,11 @@ trainer:
       loss_weight: 1.0
       weight_classes: *wclass
   validation:
-    visualize: True
     batch_size: 1
+    save_best: 'psnr'
+    visualize: True
     freq: 1
-    n_chunks: 3
+    n_saved: 3
   metrics:
     train:
       psnr:
@@ -112,10 +111,10 @@ trainer:
         data_range: 1.0
     val:
       psnr:
-        _target_: ignite.metrics.PSNR
+        _target_: utils.customMetrics.CustomPSNR #ignite.metrics.PSNR
         data_range: 1.0
       ssim:
-        _target_: ignite.metrics.SSIM
+        _target_: utils.customMetrics.CustomSSIM #ignite.metrics.SSIM
         data_range: 1.0
     
 

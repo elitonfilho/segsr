@@ -9,8 +9,6 @@ import dataloaders
 import losses
 from utils import distributed
 
-logger = logging.getLogger('main')
-
 @hydra.main()
 def train(cfg: DictConfig) -> None:
     '''

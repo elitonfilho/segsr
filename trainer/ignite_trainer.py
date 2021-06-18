@@ -1,4 +1,8 @@
+from ignite import metrics
+import ignite
+from ignite.distributed.utils import get_rank, one_rank_only
 import torch
+from torch._C import device
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import DataLoader, Dataset
@@ -6,15 +10,16 @@ from scripts.train import train
 from .base_trainer import BaseTrainer
 from hydra.utils import instantiate
 from utils.utils import AverageMeter
-from typing import List
+from typing import List, Dict, Iterable
 import logging
 
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.metrics import Metric
+from ignite.utils import setup_logger
 import ignite.distributed as idist
-
-logger = logging.getLogger(__file__)
+from ignite.metrics.metric import sync_all_reduce
+from ignite.handlers import Checkpoint, DiskSaver
 
 class IgniteTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs) -> None:
@@ -97,13 +102,12 @@ class IgniteTrainer(BaseTrainer):
         d_fake = self.netD(fake_img).mean()
         d_real = self.netD(hr_img).mean()
 
-        for metric in self.train_metrics:
-            metric.update((fake_img, hr_img))
-
         self.schedulerD.step()
         self.schedulerG.step()
 
-    def validate_step(self, engine, batch):
+        return fake_img, hr_img
+
+    def validate_step(self, engine: Engine, batch: Iterable):
         lr_img, hr_img, seg_img = batch
 
         netG: Module = self.models['netG'].eval()
@@ -114,30 +118,57 @@ class IgniteTrainer(BaseTrainer):
         sr_img = netG(lr_img)
         seg_sr_img = netSeg(sr_img)
 
-        for metric in self.val_metrics:
-            metric.update((sr_img, hr_img))
-            
-    def run_validation(self, engine, batch):
-        self.validator.run(batch)
+        return sr_img, hr_img
 
-    def setup_metrics(self):
-        self.train_metrics : List[Metric] = []
-        self.val_metrics : List[Metric] = []
-        for metric in self.cfg.trainer.metrics.train:
-            self.train_metrics.append(instantiate(self.cfg.trainer.metrics.train.get(metric)))
-        for metric in self.cfg.trainer.metrics.val:
-            self.val_metrics.append(instantiate(self.cfg.trainer.metrics.val.get(metric)))
+    def run_validation(self, engine: Engine, data: Iterable):
+        engine.run(data)
+        lossesString = ' '.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
+            if engine.state.metrics.values else None
+        if lossesString:
+            engine.logger.info(lossesString)
+
+    def setup_metrics(self, engine: Engine, type: str = 'train'):
+        if type == 'train':
+            for metric in self.cfg.trainer.metrics.train:
+                _instance = instantiate(self.cfg.trainer.metrics.train.get(metric))
+                _instance.attach(engine, metric)
+        elif type == 'val':
+            for metric in self.cfg.trainer.metrics.val:
+                _instance = instantiate(self.cfg.trainer.metrics.val.get(metric))
+                _instance.attach(engine, metric)
+
+    def setup_handlers(self, engine: Engine):
+        saveDict = {
+            'netG': self.models['netG'],
+            'netD': self.models['netD']
+            }
+        _glb = lambda *_: engine.state.epoch
+        _checkpoint = Checkpoint(
+            to_save= saveDict,
+            save_handler= DiskSaver(self.cfg.trainer.save_path, create_dir=True),
+            filename_prefix=self.cfg.name,
+            score_function=Checkpoint.get_default_score_fn(self.cfg.trainer.validation.save_best),
+            score_name=self.cfg.trainer.validation.save_best,
+            n_saved=self.cfg.trainer.validation.n_saved,
+            greater_or_equal=True
+        )
+        engine.add_event_handler(Events.EPOCH_COMPLETED, _checkpoint)
 
     def fit(self):
-        torch.autograd.set_detect_anomaly(True)
+        # torch.autograd.set_detect_anomaly(True)
         train_dataset: Dataset = self.dataloaders['train']
         val_dataset: Dataset = self.dataloaders['val']
         train_loader = idist.auto_dataloader(train_dataset, batch_size=self.cfg.trainer.batch_size)
         val_loader = idist.auto_dataloader(val_dataset, batch_size=self.cfg.trainer.validation.batch_size)
-        self.trainer = Engine(self.train_step)
-        self.validator = Engine(self.validate_step)
-        self.setup_metrics()
-        self.trainer.add_event_handler(Events.EPOCH_COMPLETED, self.run_validation, val_loader)
-        self.trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
-        
+        trainer = Engine(self.train_step)
+        trainer.logger = setup_logger('trainer')
+        validator = Engine(self.validate_step)
+        validator.logger = setup_logger('validator')
 
+        self.setup_metrics(trainer, 'train')
+        self.setup_metrics(validator, 'val')
+        trainer.add_event_handler(
+            Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
+            self.run_validation, validator, val_loader)
+        self.setup_handlers(trainer)
+        trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)

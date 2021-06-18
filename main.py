@@ -6,7 +6,6 @@ from scripts import train
 @hydra.main(config_path="config", config_name='default')
 def main(cfg : DictConfig) -> None:
     if cfg.mode == 'train':
-        print(f'rank: {cfg.rank}')
         return train(cfg)
     elif cfg.mode == 'test':
         return test(cfg)
