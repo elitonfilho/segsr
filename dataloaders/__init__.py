@@ -3,7 +3,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from typing import Dict
 
-from .dataloader_cgeo import CGEODataset
+from .dataloader_cgeo import CGEODataset, CGEODatasetForSegTask
 from .dataloader_landcover import LandCoverDataset
 from .dataloader_landcoverai import LandCoverAIDataset
 # TODO: support dynamic import with importlib
