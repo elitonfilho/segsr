@@ -1,5 +1,3 @@
-from os import listdir
-from os.path import join
 from pathlib import Path
 
 import albumentations as alb
@@ -13,6 +11,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
 from torchvision.transforms import (CenterCrop, Compose, Normalize, RandomCrop,
                                     Resize, ToPILImage, ToTensor)
+from omegaconf import DictConfig
+from hydra.utils import instantiate
 
 aug_train = alb.Compose([
     alb.VerticalFlip(p=0.5),
@@ -30,17 +30,24 @@ aug_train = alb.Compose([
     'image_lr': 'image'
 })
 
+def buildAug(cfg) -> alb.Compose:
+    _augList = []
+    for aug in cfg.dataloader.augmentation:
+        _augList.append(instantiate(aug))
+    return alb.Compose(_augList)
+
+
 class CGEODataset(Dataset):
     def __init__(self, path_lr, path_hr, path_seg=None, aug=None):
         super(CGEODataset, self).__init__()
         path_lr = Path(path_lr)
         path_hr = Path(path_hr)
         path_seg = Path(path_seg)
-        filenames = [x.name for x in Path(path_hr).iterdir() if x.suffix in ('.png', '.jpeg')][:12]
+        filenames = [x.name for x in Path(path_hr).iterdir() if x.suffix in ('.png', '.jpeg')]
         self.lr_images = [path_lr / x for x in filenames]
         self.hr_images = [path_hr / x for x in filenames]
         self.seg_images = [path_seg / x for x in filenames]
-        self.aug = False
+        print(aug)
 
     def __getitem__(self, index):
         lr_image = np.array(Image.open(self.lr_images[index]), dtype=np.uint8)

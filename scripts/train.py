@@ -16,9 +16,6 @@ def train(cfg: DictConfig) -> None:
     Args:
         cfg (Dict): hydra configuration file
     '''
-    # Initialize distributed
-#     distributed.setup_dist(cfg)
-    # create model
     with idist.Parallel(backend=cfg.backend, nproc_per_node=len(cfg.gpus)) as parallel:
         parallel.run(runTrain, cfg)
             
