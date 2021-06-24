@@ -57,6 +57,7 @@ class IgniteTrainer(BaseTrainer):
         seg_img = seg_img.cuda().long()
         
         self.netG.zero_grad()
+        self.netG.requires_grad_(True)
         
         self.netD.eval()
         self.netD.requires_grad_(False)
@@ -110,13 +111,13 @@ class IgniteTrainer(BaseTrainer):
     def validate_step(self, engine: Engine, batch: Iterable):
         lr_img, hr_img, seg_img = batch
 
-        netG: Module = self.models['netG'].eval()
-        netSeg: Module = self.models['netSeg'].eval()
+        self.netG.eval()
+        self.netG.requires_grad_(False)
 
         hr_img = hr_img.float().cuda()
         lr_img = lr_img.float().cuda()
-        sr_img = netG(lr_img)
-        seg_sr_img = netSeg(sr_img)
+        sr_img = self.netG(lr_img)
+        seg_sr_img = self.netSeg(sr_img)
 
         return sr_img, hr_img
 

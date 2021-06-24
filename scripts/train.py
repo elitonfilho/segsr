@@ -16,7 +16,7 @@ def train(cfg: DictConfig) -> None:
     Args:
         cfg (Dict): hydra configuration file
     '''
-    with idist.Parallel(backend=cfg.backend, nproc_per_node=len(cfg.gpus)) as parallel:
+    with idist.Parallel(backend=cfg.backend, nproc_per_node=None) as parallel:
         parallel.run(runTrain, cfg)
             
 
