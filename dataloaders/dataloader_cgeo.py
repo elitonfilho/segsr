@@ -4,6 +4,7 @@ import albumentations as alb
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import cv2
 from albumentations.pytorch import ToTensorV2
 from hydra.utils import instantiate
 from PIL import Image
@@ -47,22 +48,18 @@ class CGEODataset(Dataset):
     def __init__(self, path_lr, path_hr, path_seg, augCfg=None):
         super(CGEODataset, self).__init__()
         path_hr = Path(path_hr)
-        path_lr = Path(path_lr)
         path_seg = Path(path_seg)
         filenames = [x.name for x in path_hr.iterdir() if x.suffix in ('.png', '.jpeg')]
-        self.lr_images = [path_lr / x for x in filenames]
         self.hr_images = [path_hr / x for x in filenames]
         self.seg_images = [path_seg / x for x in filenames]
-        print(augCfg)
         self.aug = augCfg or buildAug(augCfg)
 
     def __getitem__(self, index):
-        lr_image = np.array(Image.open(self.lr_images[index]), dtype=np.uint8)
         hr_image = np.array(Image.open(self.hr_images[index]), dtype=np.uint8)
         seg_image = np.array(Image.open(self.seg_images[index]), dtype=np.int32)
         if self.aug:
-            transformed = self.aug(image=hr_image/255., image_lr=lr_image/255., mask=seg_image)
-            lr_image = transformed['image_lr']
+            transformed = self.aug(image=hr_image/255., mask=seg_image)
+            lr_image = cv2.resize(hr_image, tuple(reversed(hr_image.shape[:2]/2)), cv2.INTER_CUBIC)
             hr_image = transformed['image']
             seg_image = transformed['mask']
             return lr_image, hr_image, seg_image
