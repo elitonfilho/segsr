@@ -8,24 +8,24 @@ backend: # nccl
 
 dataloader:
   train: 
-    _target_: dataloaders.CGEODataset
+    _target_: dataloaders.CGEODatasetForSegTask
     path_lr: D:\datasets\cgeoNew\train\train_lr
     path_hr: D:\datasets\cgeoNew\train\train_hr
     path_seg: D:\datasets\cgeoNew\train\train_seg
     augCfg: ${dataloader.augmentation}
   val:
-    _target_: dataloaders.CGEODataset
+    _target_: dataloaders.CGEODatasetForSegTask
     path_lr: D:\datasets\cgeoNew\val\val_lr
     path_hr: D:\datasets\cgeoNew\val\val_hr
     path_seg: D:\datasets\cgeoNew\val\val_seg
   test:
-    _target_: dataloaders.CGEODataset
+    _target_: dataloaders.CGEODatasetForSegTask
     path_lr: D:\datasets\cgeoNew\test\test_lr
     path_hr: D:\datasets\cgeoNew\test\test_hr
     path_seg: D:\datasets\cgeoNew\test\test_seg
   # batch_size: 1
   n_classes: &nclass 4
-  weight_classes: &wclass [1.,1.,1.,1.]
+  weight_classes: &wclass [1.,1.,1.,1.,1.]
   prefetch: 1
   num_workers: 1
   pin_memory: False
@@ -48,22 +48,12 @@ dataloader:
       _target_: albumentations.pytorch.ToTensorV2
 
 archs:
-  netG:
-    _target_: models.rrdb_arch.RRDBNet
-    num_in_ch: 3
-    num_out_ch: 3
-    num_feat: 64
-    num_block: 23
-  netD:
-    _target_: models.vgg_arch.VGG128
-    num_in_ch: 3
-    num_feat: 64
   netSeg:
     _target_: models.model_unet_resnet.UNetResNet
     n_classes: *nclass
 
 trainer:
-  _target_: trainer.ignite_trainer.IgniteTrainer
+  _target_: trainer.ignite_trainer_seg.IgniteTrainerSeg
   optimizer:
     _target_: torch.optim.Adam
     lr: 1e-4
@@ -82,31 +72,15 @@ trainer:
   num_epochs: 5
   scheduler_milestones: [50,100,150,200]
   scheduler_gamma: 0.1
-  batch_size: 1
+  batch_size: 4
   crop_size: 256
   upscale_factor: 4
   lr: 1e-3
   save_path: outputs/${name}
   use_aug: True
   losses: 
-    il:
-      _target_: losses.L1Loss
-      loss_weight: 1.0
-    adv:
-      _target_: losses.GANLoss
-      gan_type: 'vanilla'
-      loss_weight: 1.0
-    per:
-      _target_: losses.PerceptualLoss
-      layer_weights: {'conv5_4': 1}
-      perceptual_weight: 1.0
-    tv:
-      _target_: losses.WeightedTVLoss
-      loss_weight: 1.0
-    seg:
-      _target_: losses.SegLoss
-      loss_weight: 1.0
-      weight_classes: *wclass
+    cee:
+      _target_: torch.nn.CrossEntropyLoss
   validation:
     batch_size: 1
     save_best: 'psnr'
@@ -116,10 +90,10 @@ trainer:
   metrics:
     train:
       psnr:
-        _target_: ignite.metrics.PSNR
+        _target_: utils.customMetrics.CustomPSNR
         data_range: 1.0
       ssim:
-        _target_: ignite.metrics.SSIM
+        _target_: utils.customMetrics.CustomSSIM
         data_range: 1.0
     val:
       psnr:

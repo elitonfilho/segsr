@@ -19,7 +19,7 @@ class IgniteTrainerSeg(BaseTrainer):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.netSeg: Module = self.models['netSeg'].cuda().eval()
+        self.netSeg: Module = self.models['netSeg'].cuda().train()
         
         self.netSeg = idist.auto_model(self.netSeg)
 
@@ -27,22 +27,27 @@ class IgniteTrainerSeg(BaseTrainer):
         
         self.optimizer = idist.auto_optim(self.optimizer)
 
+        self.scheduler = self.schedulers['netSeg']
+
         self.loss = self.losses['cee'].cuda()
 
     def train_step(self, engine: Engine, batch: Iterable):
 
         hr_img, hr_label = batch
+
         hr_img = hr_img.cuda().float()
-        seg_img = hr_label.cuda().long()
+        hr_label = hr_label.cuda().long()
 
-        netSeg: Module = self.netSeg.train()
-        netSeg.zero_grad()
+        self.netSeg.train()
+        self.netSeg.zero_grad()
 
-        pred_label = netSeg(hr_img)
-        loss = self.loss(pred_label, hr_label)
-        loss.backward()
+        print(self.netSeg)
 
-        return pred_label, seg_img
+        pred_label = self.netSeg(hr_img)
+        # loss = self.loss(pred_label, hr_label)
+        # loss.backward()
+
+        return pred_label, hr_label
 
     def validate_step(self, engine: Engine, batch: Iterable):
         hr_img, hr_label = batch
@@ -60,6 +65,12 @@ class IgniteTrainerSeg(BaseTrainer):
             if engine.state.metrics.values else None
         if lossesString:
             engine.logger.info(lossesString)
+
+    def prepare_batch(self, batch, device, non_blocking):
+        return (
+            batch[0].float().cuda(),
+            batch[1].long().cuda()
+        )
 
     def setup_metrics(self, type: str = 'train') -> List[ignite.ignite.metrics.Metric]:
         if type == 'train':
@@ -96,9 +107,10 @@ class IgniteTrainerSeg(BaseTrainer):
         val_loader = idist.auto_dataloader(val_dataset, batch_size=self.cfg.trainer.validation.batch_size)
 
         # TODO: maybe setup a prepare_batch fn
-        trainer = create_supervised_trainer(self.netSeg, self.optimizer, self.setup_metrics('train'))
+        trainer = create_supervised_trainer(self.netSeg, self.optimizer, self.loss, prepare_batch=self.prepare_batch)
         trainer.logger = setup_logger('trainer')
-        evaluator = create_supervised_evaluator(self.netSeg, self.setup_metrics('val'))
+        print(self.loss)
+        evaluator = create_supervised_evaluator(self.netSeg, self.setup_metrics('val'), prepare_batch=self.prepare_batch)
         evaluator.logger = setup_logger('validator')
 
         trainer.add_event_handler(

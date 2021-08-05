@@ -38,12 +38,8 @@ def buildAugForSegTask(augCfg) -> alb.Compose:
     _augList = []
     if augCfg:
         for aug in augCfg:
-            _augList.append(instantiate(aug))
-        return alb.Compose(
-            _augList, 
-            additional_targets={
-                'image_lr':'image'
-        })
+            _augList.append(instantiate(augCfg.get(aug)))
+        return alb.Compose(_augList)
 
 
 class CGEODataset(Dataset):
@@ -79,7 +75,7 @@ class CGEODataset(Dataset):
         return len(self.hr_images)
 
 class CGEODatasetForSegTask(Dataset):
-    def __init__(self, path_hr, path_seg, augCfg=None):
+    def __init__(self, path_lr, path_hr, path_seg, augCfg=None):
         super(CGEODatasetForSegTask, self).__init__()
         path_hr = Path(path_hr)
         path_seg = Path(path_seg)
