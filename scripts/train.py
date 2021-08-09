@@ -1,6 +1,6 @@
 import hydra
 from hydra.utils import instantiate
-from omegaconf import DictConfig
+from omegaconf import DictConfig, ListConfig
 import ignite.distributed as idist
 import logging
 
@@ -16,7 +16,7 @@ def train(cfg: DictConfig) -> None:
     Args:
         cfg (Dict): hydra configuration file
     '''
-    if isinstance(cfg.gpus, list):
+    if isinstance(cfg.gpus, ListConfig) and len(cfg.gpus) > 1:
         nproc_per_node = len(cfg.gpus)
         backend = cfg.backend
     else:
