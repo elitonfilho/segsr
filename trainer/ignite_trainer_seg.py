@@ -1,12 +1,14 @@
 import ignite
+from ignite import metrics
 from ignite.engine import create_supervised_evaluator, create_supervised_trainer
 import torch
+from torch.functional import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import Dataset
 from .base_trainer import BaseTrainer
 from hydra.utils import instantiate
-from typing import List, Dict, Iterable
+from typing import List, Dict, Iterable, Union
 
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
@@ -41,8 +43,6 @@ class IgniteTrainerSeg(BaseTrainer):
         self.netSeg.train()
         self.netSeg.zero_grad()
 
-        print(self.netSeg)
-
         pred_label = self.netSeg(hr_img)
         # loss = self.loss(pred_label, hr_label)
         # loss.backward()
@@ -66,24 +66,32 @@ class IgniteTrainerSeg(BaseTrainer):
         if lossesString:
             engine.logger.info(lossesString)
 
-    def prepare_batch(self, batch, device, non_blocking):
+    def prepare_batch(self, batch, *args, **kwargs):
         return (
             batch[0].float().cuda(),
             batch[1].long().cuda()
         )
 
-    def setup_metrics(self, type: str = 'train') -> List[ignite.ignite.metrics.Metric]:
+    def setup_metrics(self, type: str = 'train') -> Union[List[ignite.ignite.metrics.Metric], Dict[str, ignite.ignite.metrics.Metric]]:
         if type == 'train':
             metrics = []
             for metric in self.cfg.trainer.metrics.train:
                 _instance = instantiate(self.cfg.trainer.metrics.train.get(metric))
                 metrics.append(_instance)
         elif type == 'val':
+            require_cm = ['iou']
             metrics = {}
             for metric in self.cfg.trainer.metrics.val:
+                if metric in require_cm and metrics.get('cm'):
+                    _instance = instantiate(self.cfg.trainer.metrics.val.get(metric), cm=metrics.get('cm'))
+                    metrics.update({metric:_instance})
+                    continue
                 _instance = instantiate(self.cfg.trainer.metrics.val.get(metric))
                 metrics.update({metric:_instance})
         return metrics
+
+    def output_transform(self, x: Tensor, y: Tensor, ypred: Tensor):
+        return ypred.argmax(1).squeeze(), y
 
     def setup_handlers(self, engine: Engine) -> None:
         saveDict = {'netSeg': self.netSeg}
@@ -106,15 +114,13 @@ class IgniteTrainerSeg(BaseTrainer):
         train_loader = idist.auto_dataloader(train_dataset, batch_size=self.cfg.trainer.batch_size)
         val_loader = idist.auto_dataloader(val_dataset, batch_size=self.cfg.trainer.validation.batch_size)
 
-        # TODO: maybe setup a prepare_batch fn
         trainer = create_supervised_trainer(self.netSeg, self.optimizer, self.loss, prepare_batch=self.prepare_batch)
         trainer.logger = setup_logger('trainer')
-        print(self.loss)
         evaluator = create_supervised_evaluator(self.netSeg, self.setup_metrics('val'), prepare_batch=self.prepare_batch)
         evaluator.logger = setup_logger('validator')
 
         trainer.add_event_handler(
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
-            evaluator.run, val_loader)
-        self.setup_handlers(trainer)
+            self.run_validation, evaluator, val_loader)
+        self.setup_handlers(evaluator)
         trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)

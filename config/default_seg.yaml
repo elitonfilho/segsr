@@ -9,20 +9,20 @@ backend: # nccl
 dataloader:
   train: 
     _target_: dataloaders.CGEODatasetForSegTask
-    path_lr: D:\datasets\cgeoNew\train\train_lr
-    path_hr: D:\datasets\cgeoNew\train\train_hr
-    path_seg: D:\datasets\cgeoNew\train\train_seg
+    path_lr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\lr
+    path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\hr
+    path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\seg
     augCfg: ${dataloader.augmentation}
   val:
     _target_: dataloaders.CGEODatasetForSegTask
-    path_lr: D:\datasets\cgeoNew\val\val_lr
-    path_hr: D:\datasets\cgeoNew\val\val_hr
-    path_seg: D:\datasets\cgeoNew\val\val_seg
+    path_lr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\val\lr
+    path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\val\hr
+    path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\val\seg
   test:
     _target_: dataloaders.CGEODatasetForSegTask
-    path_lr: D:\datasets\cgeoNew\test\test_lr
-    path_hr: D:\datasets\cgeoNew\test\test_hr
-    path_seg: D:\datasets\cgeoNew\test\test_seg
+    path_lr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\test\lr
+    path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\test\hr
+    path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\test\seg
   # batch_size: 1
   n_classes: &nclass 4
   weight_classes: &wclass [1.,1.,1.,1.,1.]
@@ -61,47 +61,37 @@ trainer:
     _target_: torch.optim.lr_scheduler.MultiStepLR
     milestones: [0,10]
     gamma: 0.9
-  use_seg: True
   arch_enc: 'unet'
   use_pretrained_seg: True
   path_pretrained_seg: 'epochs/unet-resnet-100.pth'
-  use_pretrained_sr: True
-  path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
-  path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
   begin_seg: 0.
-  num_epochs: 5
-  scheduler_milestones: [50,100,150,200]
-  scheduler_gamma: 0.1
+  num_epochs: 10
   batch_size: 4
-  crop_size: 256
   upscale_factor: 4
-  lr: 1e-3
   save_path: outputs/${name}
-  use_aug: True
   losses: 
     cee:
       _target_: torch.nn.CrossEntropyLoss
   validation:
-    batch_size: 1
-    save_best: 'psnr'
+    batch_size: 4
+    save_best: acc
     visualize: True
     freq: 1
     n_saved: 3
   metrics:
     train:
-      psnr:
-        _target_: utils.customMetrics.CustomPSNR
-        data_range: 1.0
-      ssim:
-        _target_: utils.customMetrics.CustomSSIM
-        data_range: 1.0
+      acc:
+        _target_: ignite.metrics.Accuracy
     val:
-      psnr:
-        _target_: utils.customMetrics.CustomPSNR #ignite.metrics.PSNR
-        data_range: 1.0
-      ssim:
-        _target_: utils.customMetrics.CustomSSIM #ignite.metrics.SSIM
-        data_range: 1.0
+      acc:
+        _target_: ignite.metrics.Accuracy
+      cm:
+        _target_: ignite.metrics.confusion_matrix.ConfusionMatrix
+        num_classes: *nclass
+      iou:
+        _target_: ignite.metrics.IoU
+      cr:
+        _target_: ignite.metrics.ClassificationReport
     
 
 test:

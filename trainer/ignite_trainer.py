@@ -2,7 +2,6 @@ from ignite import metrics
 import ignite
 from ignite.distributed.utils import get_rank, one_rank_only
 import torch
-from torch._C import device
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import DataLoader, Dataset
@@ -18,7 +17,6 @@ from ignite.engine.events import Events
 from ignite.metrics import Metric
 from ignite.utils import setup_logger
 import ignite.distributed as idist
-from ignite.metrics.metric import sync_all_reduce
 from ignite.handlers import Checkpoint, DiskSaver
 
 class IgniteTrainer(BaseTrainer):
