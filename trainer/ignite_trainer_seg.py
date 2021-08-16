@@ -1,21 +1,22 @@
+from pathlib import Path
+from typing import Dict, Iterable, List, Union
+
 import ignite
-from ignite import metrics
-from ignite.engine import create_supervised_evaluator, create_supervised_trainer
+import ignite.distributed as idist
+from hydra.utils import instantiate, to_absolute_path, get_original_cwd
+from ignite.engine import (create_supervised_evaluator,
+                           create_supervised_trainer)
+from ignite.engine.engine import Engine
+from ignite.engine.events import Events
+from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
+from ignite.utils import setup_logger
 import torch
-from torch.functional import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import Dataset
-from .base_trainer import BaseTrainer
-from hydra.utils import instantiate
-from typing import List, Dict, Iterable, Union
 
-from ignite.engine.engine import Engine
-from ignite.engine.events import Events
-from ignite.metrics import Metric
-from ignite.utils import setup_logger
-import ignite.distributed as idist
-from ignite.handlers import Checkpoint, DiskSaver
+from .base_trainer import BaseTrainer
+
 
 class IgniteTrainerSeg(BaseTrainer):
     def __init__(self, *args, **kwargs) -> None:
@@ -31,7 +32,7 @@ class IgniteTrainerSeg(BaseTrainer):
 
         self.scheduler = self.schedulers['netSeg']
 
-        self.loss = self.losses['cee'].cuda()
+        self.loss = self.losses['cee'].cuda(device=f'cuda:{idist.get_rank()}')
 
     def train_step(self, engine: Engine, batch: Iterable):
 
@@ -61,7 +62,7 @@ class IgniteTrainerSeg(BaseTrainer):
 
     def run_validation(self, engine: Engine, data: Iterable) -> None:
         engine.run(data)
-        lossesString = ' '.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
+        lossesString = '\n'.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
             if engine.state.metrics.values else None
         if lossesString:
             engine.logger.info(lossesString)
@@ -90,22 +91,32 @@ class IgniteTrainerSeg(BaseTrainer):
                 metrics.update({metric:_instance})
         return metrics
 
-    def output_transform(self, x: Tensor, y: Tensor, ypred: Tensor):
-        return ypred.argmax(1).squeeze(), y
+    def debug_train(self, x, y, ypred, loss):
+#         print('Loss: ', loss.item())
+        return loss.item()
 
-    def setup_handlers(self, engine: Engine) -> None:
-        saveDict = {'netSeg': self.netSeg}
-        _glb = lambda *_: engine.state.epoch
+    def setup_handlers(self, engine: Engine, trainer: Engine) -> None:
+        saveDict = {
+            'netSeg': self.netSeg
+            }
         _checkpoint = Checkpoint(
             to_save= saveDict,
             save_handler= DiskSaver(self.cfg.trainer.save_path, create_dir=True),
             filename_prefix=self.cfg.name,
+            global_step_transform=global_step_from_engine(trainer),
             score_function=Checkpoint.get_default_score_fn(self.cfg.trainer.validation.save_best),
             score_name=self.cfg.trainer.validation.save_best,
             n_saved=self.cfg.trainer.validation.n_saved,
             greater_or_equal=True
         )
         engine.add_event_handler(Events.EPOCH_COMPLETED, _checkpoint)
+
+    def setup_load_state(self, path: str):
+        loadDict = {
+            'netSeg': self.netSeg
+            }
+        ckpt = torch.load(path, map_location=f'cuda:{idist.get_rank()}')
+        Checkpoint.load_objects(to_load=loadDict, checkpoint=ckpt)
 
     def fit(self) -> None:
         # torch.autograd.set_detect_anomaly(True)
@@ -114,13 +125,15 @@ class IgniteTrainerSeg(BaseTrainer):
         train_loader = idist.auto_dataloader(train_dataset, batch_size=self.cfg.trainer.batch_size)
         val_loader = idist.auto_dataloader(val_dataset, batch_size=self.cfg.trainer.validation.batch_size)
 
-        trainer = create_supervised_trainer(self.netSeg, self.optimizer, self.loss, prepare_batch=self.prepare_batch)
+        trainer = create_supervised_trainer(self.netSeg, self.optimizer, self.loss, prepare_batch=self.prepare_batch, device=f'cuda:{idist.get_rank()}', output_transform=self.debug_train)
         trainer.logger = setup_logger('trainer')
-        evaluator = create_supervised_evaluator(self.netSeg, self.setup_metrics('val'), prepare_batch=self.prepare_batch)
+        evaluator = create_supervised_evaluator(self.netSeg, self.setup_metrics('val'), prepare_batch=self.prepare_batch, device=f'cuda:{idist.get_rank()}')
         evaluator.logger = setup_logger('validator')
 
         trainer.add_event_handler(
-            Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
+            Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq),
             self.run_validation, evaluator, val_loader)
-        self.setup_handlers(evaluator)
+        self.setup_handlers(evaluator, trainer)
+        if self.cfg.trainer.pretrained:
+            trainer.add_event_handler(Events.STARTED, self.setup_load_state, self.cfg.trainer.path_pretrained)
         trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)

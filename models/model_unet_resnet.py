@@ -29,7 +29,7 @@ class DecoderBlock(torch.nn.Module):
 
 class UNetResNet(torch.nn.Module):
 
-    def __init__(self, n_classes):
+    def __init__(self, n_class):
 
       super(UNetResNet, self).__init__()
       
@@ -51,7 +51,7 @@ class UNetResNet(torch.nn.Module):
       self.dec2 = DecoderBlock(256 + 64, 128, 128)
       self.dec1 = DecoderBlock(128, 128, 32)
       self.dec0 = ConvRelu(32, 32)
-      self.final = torch.nn.Conv2d(32, n_classes, kernel_size=1)
+      self.final = torch.nn.Conv2d(32, n_class, kernel_size=1)
 
     def forward(self, x):
 

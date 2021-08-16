@@ -1,18 +1,19 @@
 from pathlib import Path
 
 import albumentations as alb
+from albumentations.augmentations.crops.transforms import RandomCrop
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import cv2
 from albumentations.pytorch import ToTensorV2
 from hydra.utils import instantiate
 from PIL import Image
 from torch.utils.data.dataset import Dataset
-from torchvision.transforms import (CenterCrop, Compose, Normalize, RandomCrop,
-                                    Resize, ToPILImage, ToTensor)
+from torchvision.transforms import ToTensor
 
 aug_train = alb.Compose([
+    alb.RandomCrop(256,256),
     alb.VerticalFlip(p=0.5),
     alb.HorizontalFlip(p=0.5),
     alb.Transpose(p=0.5),
@@ -40,6 +41,11 @@ def buildAugForSegTask(augCfg) -> alb.Compose:
         for aug in augCfg:
             _augList.append(instantiate(augCfg.get(aug)))
         return alb.Compose(_augList)
+    else:
+        return alb.Compose([
+            alb.CenterCrop(256,256),
+            ToTensorV2()
+        ])
 
 
 class CGEODataset(Dataset):
@@ -75,7 +81,7 @@ class CGEODataset(Dataset):
         return len(self.hr_images)
 
 class CGEODatasetForSegTask(Dataset):
-    def __init__(self, path_lr, path_hr, path_seg, augCfg=None):
+    def __init__(self, path_hr, path_seg, augCfg=None):
         super(CGEODatasetForSegTask, self).__init__()
         path_hr = Path(path_hr)
         path_seg = Path(path_seg)
@@ -94,7 +100,7 @@ class CGEODatasetForSegTask(Dataset):
             return hr_image, seg_image
         elif not self.aug:
             # TODO: normalize
-            return ToTensor()(hr_image), torch.tensor(seg_image, dtype=torch.int32)
+            return ToTensor()(hr_image), torch.tensor(seg_image)
 
     def __len__(self):
         return len(self.hr_images)
@@ -130,26 +136,13 @@ class CGEODatasetOld(Dataset):
         return len(self.hr_images)
 
 def debug():
-    train_set = CGEODataset(
-        'D:\datasets\cgeo\lr',
-        'D:\datasets\cgeo\hr',
-        r'D:\datasets\cgeo\annotation'
+    train_set = CGEODatasetForSegTask(
+        '/mnt/data/eliton/datasets/cgeo/test/hr',
+        '/mnt/data/eliton/datasets/cgeo/test/seg'
         )
 
-    lr, hr, mask = train_set[0]
-    print(type(lr), lr.dtype, lr.shape)
-    print(type(hr), hr.dtype, hr.shape)
-    print(type(mask), mask.dtype, mask.shape)
-
-    fig, ax = plt.subplots(1, 3)
-    # ax[0].imshow(hr.astype(np.uint8))
-    # ax[1].imshow(lr)
-    ax[0].imshow(lr.permute(1, 2, 0))
-    ax[1].imshow(hr.permute(1, 2, 0))
-    # ax[3].imshow(hr_restore.permute(1, 2, 0))
-    ax[2].imshow(mask)
-    plt.show()
-
+    for i in train_set:
+        print(torch.max(i[1]), torch.min(i[1]))
 
 if __name__ == "__main__":
     debug()

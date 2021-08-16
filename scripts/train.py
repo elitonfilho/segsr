@@ -1,13 +1,12 @@
 import hydra
-from hydra.utils import instantiate
+from hydra.utils import get_original_cwd, instantiate, to_absolute_path
 from omegaconf import DictConfig, ListConfig
+from hydra.core.singleton import Singleton
 import ignite.distributed as idist
-import logging
 
 import models
 import dataloaders
 import losses
-from utils import distributed
 
 @hydra.main()
 def train(cfg: DictConfig) -> None:
@@ -19,6 +18,7 @@ def train(cfg: DictConfig) -> None:
     if isinstance(cfg.gpus, ListConfig) and len(cfg.gpus) > 1:
         nproc_per_node = len(cfg.gpus)
         backend = cfg.backend
+        cfg.trainer.path_pretrained = to_absolute_path(cfg.trainer.path_pretrained)
     else:
         nproc_per_node = None
         backend = None
