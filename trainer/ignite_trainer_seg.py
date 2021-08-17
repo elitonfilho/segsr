@@ -9,13 +9,15 @@ from ignite.engine import (create_supervised_evaluator,
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
+from ignite.handlers.param_scheduler import LRScheduler
 from ignite.utils import setup_logger
 import torch
 from torch.nn import Module
-from torch.optim import Optimizer
+from torch.optim import Optimizer, optimizer
 from torch.utils.data.dataloader import Dataset
 
 from .base_trainer import BaseTrainer
+from ignite.handlers import FastaiLRFinder
 
 
 class IgniteTrainerSeg(BaseTrainer):
@@ -30,35 +32,9 @@ class IgniteTrainerSeg(BaseTrainer):
         
         self.optimizer = idist.auto_optim(self.optimizer)
 
-        self.scheduler = self.schedulers['netSeg']
+        # self.scheduler = self.schedulers['netSeg']
 
         self.loss = self.losses['cee'].cuda(device=f'cuda:{idist.get_rank()}')
-
-    def train_step(self, engine: Engine, batch: Iterable):
-
-        hr_img, hr_label = batch
-
-        hr_img = hr_img.cuda().float()
-        hr_label = hr_label.cuda().long()
-
-        self.netSeg.train()
-        self.netSeg.zero_grad()
-
-        pred_label = self.netSeg(hr_img)
-        # loss = self.loss(pred_label, hr_label)
-        # loss.backward()
-
-        return pred_label, hr_label
-
-    def validate_step(self, engine: Engine, batch: Iterable):
-        hr_img, hr_label = batch
-
-        netSeg: Module = self.netSeg.eval()
-
-        hr_img = hr_img.float().cuda()
-        pred_label = netSeg(hr_img)
-
-        return pred_label, hr_label
 
     def run_validation(self, engine: Engine, data: Iterable) -> None:
         engine.run(data)
@@ -118,6 +94,11 @@ class IgniteTrainerSeg(BaseTrainer):
         ckpt = torch.load(path, map_location=f'cuda:{idist.get_rank()}')
         Checkpoint.load_objects(to_load=loadDict, checkpoint=ckpt)
 
+    def setup_schedulers(self, engine: Engine):
+        _instance = instantiate(self.cfg.trainer.get('scheduler'), optimizer=self.optimizer)
+        _wrapped_instance = LRScheduler(_instance)
+        engine.add_event_handler(Events.ITERATION_COMPLETED, _wrapped_instance)
+
     def fit(self) -> None:
         # torch.autograd.set_detect_anomaly(True)
         train_dataset: Dataset = self.dataloaders['train']
@@ -136,4 +117,6 @@ class IgniteTrainerSeg(BaseTrainer):
         self.setup_handlers(evaluator, trainer)
         if self.cfg.trainer.pretrained:
             trainer.add_event_handler(Events.STARTED, self.setup_load_state, self.cfg.trainer.path_pretrained)
+        if self.cfg.trainer.scheduler:
+            self.setup_schedulers(trainer)
         trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
