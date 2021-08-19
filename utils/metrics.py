@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import logging
-from torch._tensor import Tensor
+from torch.tensor import Tensor
 
 logger = logging.getLogger('main')
 

@@ -1,31 +1,24 @@
-# defaults:
-#   - hydra/launcher: joblib
-
 mode: train
 name: Test1
-gpus: [0]
-backend: # nccl
+gpus: 0
+backend: nccl
 
 dataloader:
   train: 
     _target_: dataloaders.CGEODatasetForSegTask
-    path_lr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\lr
-    path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\hr
-    path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\seg
+    path_hr: /mnt/data/eliton/datasets/cgeo/train/hr
+    path_seg: /mnt/data/eliton/datasets/cgeo/train/seg
     augCfg: ${dataloader.augmentation}
   val:
     _target_: dataloaders.CGEODatasetForSegTask
-    path_lr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\val\lr
-    path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\val\hr
-    path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\val\seg
+    path_hr: /mnt/data/eliton/datasets/cgeo/val/hr
+    path_seg: /mnt/data/eliton/datasets/cgeo/val/seg
   test:
     _target_: dataloaders.CGEODatasetForSegTask
-    path_lr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\test\lr
-    path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\test\hr
-    path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\test\seg
-  # batch_size: 1
-  n_classes: &nclass 4
-  weight_classes: &wclass [1.,1.,1.,1.,1.]
+    path_hr: /mnt/data/eliton/datasets/cgeo/test/hr
+    path_seg: /mnt/data/eliton/datasets/cgeo/test/seg
+  n_classes: &nclass 5
+  weight_classes: &wclass [1.,1.,2.,2.,1.]
   prefetch: 1
   num_workers: 1
   pin_memory: False
@@ -49,35 +42,37 @@ dataloader:
 
 archs:
   netSeg:
-    _target_: models.model_unet_resnet.UNetResNet
-    n_classes: *nclass
+    # _target_: models.model_unet.UNet
+    _target_: models.model_unet.UNet
+    n_class: *nclass
 
 trainer:
   _target_: trainer.ignite_trainer_seg.IgniteTrainerSeg
   optimizer:
     _target_: torch.optim.Adam
-    lr: 1e-4
+    lr: 1e-3
   scheduler:
     _target_: torch.optim.lr_scheduler.MultiStepLR
-    milestones: [0,10]
+    milestones: [0,25,50,75]
     gamma: 0.9
   arch_enc: 'unet'
-  use_pretrained_seg: True
-  path_pretrained_seg: 'epochs/unet-resnet-100.pth'
+  pretrained: False
+  path_pretrained: 'outputs/load_test.pt'
   begin_seg: 0.
-  num_epochs: 10
-  batch_size: 4
+  num_epochs: 100
+  batch_size: 256
   upscale_factor: 4
   save_path: outputs/${name}
   losses: 
     cee:
-      _target_: torch.nn.CrossEntropyLoss
+      _target_: losses.SegLoss
+      weight_classes: *wclass
   validation:
-    batch_size: 4
-    save_best: acc
+    batch_size: 64
+    save_best: miou
     visualize: True
     freq: 1
-    n_saved: 3
+    n_saved: 2
   metrics:
     train:
       acc:
@@ -92,13 +87,15 @@ trainer:
         _target_: ignite.metrics.IoU
       cr:
         _target_: ignite.metrics.ClassificationReport
-    
+      miou:
+        _target_: ignite.metrics.mIoU
 
-test:
+tester:
+  _target_: trainer.ignite_tester_seg.IgniteTesterSeg
   batch_size: 1
   upscale_factor: 4
-  path_encoder: 'epochs/200_noseg_encoder.pth'
+  path_pretrained: '/home/eliton/segsr/outputs/load_test.pt'
   path_image: 'data/LR/2953-3-SO_1_LR.png'
-  path_save: 'results/test'
+  save_path: '/home/eliton/segsr/outputs/test'
   prefix_save: 'seg'
 

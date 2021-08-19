@@ -27,7 +27,7 @@ def get_dataloaders(cfg: DictConfig) -> Dict:
 
 def get_datasets(cfg: DictConfig) -> Dict:
     datasets = {}
-    options = ('train', 'val') if cfg.mode == 'train' else ('test')
+    options = ('train', 'val') if cfg.mode == 'train' else ['test']
     for option in options:
         dataset = instantiate(cfg.dataloader.get(option))
         datasets.update({

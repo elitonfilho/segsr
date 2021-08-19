@@ -1,9 +1,10 @@
+import logging
 from pathlib import Path
 from typing import Dict, Iterable, List, Union
 
 import ignite
 import ignite.distributed as idist
-from hydra.utils import instantiate, to_absolute_path, get_original_cwd
+from hydra.utils import instantiate
 from ignite.engine import (create_supervised_evaluator,
                            create_supervised_trainer)
 from ignite.engine.engine import Engine
@@ -11,9 +12,10 @@ from ignite.engine.events import Events
 from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
 from ignite.handlers.param_scheduler import LRScheduler
 from ignite.utils import setup_logger
+from ignite.contrib.handlers.tqdm_logger import ProgressBar
 import torch
 from torch.nn import Module
-from torch.optim import Optimizer, optimizer
+from torch.optim import Optimizer
 from torch.utils.data.dataloader import Dataset
 
 from .base_trainer import BaseTrainer
@@ -56,7 +58,7 @@ class IgniteTrainerSeg(BaseTrainer):
                 _instance = instantiate(self.cfg.trainer.metrics.train.get(metric))
                 metrics.append(_instance)
         elif type == 'val':
-            require_cm = ['iou']
+            require_cm = ['iou','miou']
             metrics = {}
             for metric in self.cfg.trainer.metrics.val:
                 if metric in require_cm and metrics.get('cm'):
@@ -119,4 +121,6 @@ class IgniteTrainerSeg(BaseTrainer):
             trainer.add_event_handler(Events.STARTED, self.setup_load_state, self.cfg.trainer.path_pretrained)
         if self.cfg.trainer.scheduler:
             self.setup_schedulers(trainer)
-        trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
+        pbar = ProgressBar()
+        pbar.attach(trainer)
+        # trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
