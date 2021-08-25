@@ -1,0 +1,42 @@
+# @package _group_ 
+_target_: trainer.ignite_trainer_seg.IgniteTrainerSeg
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 1e-3
+scheduler:
+  _target_: torch.optim.lr_scheduler.MultiStepLR
+  milestones: [0,25,50,75]
+  gamma: 0.9
+pretrained: False
+path_pretrained: 'outputs/load_test.pt'
+begin_seg: 0.
+num_epochs: 100
+batch_size: 1
+upscale_factor: 4
+save_path: outputs/${name}
+losses: 
+  cee:
+    _target_: losses.SegLoss
+    weight_classes: ${dataloader.weight_classes}
+validation:
+  batch_size: 1
+  save_best: miou
+  visualize: True
+  freq: 1
+  n_saved: 2
+metrics:
+  train:
+    acc:
+      _target_: ignite.metrics.Accuracy
+  val:
+    acc:
+      _target_: ignite.metrics.Accuracy
+    cm:
+      _target_: ignite.metrics.confusion_matrix.ConfusionMatrix
+      num_classes: ${dataloader.n_classes}
+    iou:
+      _target_: ignite.metrics.IoU
+    cr:
+      _target_: ignite.metrics.ClassificationReport
+    miou:
+      _target_: ignite.metrics.mIoU

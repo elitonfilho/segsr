@@ -1,94 +1,12 @@
+defaults:
+  - dataloader: cgeo-home
+  - archs: seg-unet
+  - trainer: seg-trainer
+
 mode: train
 name: Test1
 gpus: 0
 backend: nccl
-
-dataloader:
-  train: 
-    _target_: dataloaders.CGEODatasetForSegTask
-    path_hr: /mnt/data/eliton/datasets/cgeo/train/hr
-    path_seg: /mnt/data/eliton/datasets/cgeo/train/seg
-    augCfg: ${dataloader.augmentation}
-  val:
-    _target_: dataloaders.CGEODatasetForSegTask
-    path_hr: /mnt/data/eliton/datasets/cgeo/val/hr
-    path_seg: /mnt/data/eliton/datasets/cgeo/val/seg
-  test:
-    _target_: dataloaders.CGEODatasetForSegTask
-    path_hr: /mnt/data/eliton/datasets/cgeo/test/hr
-    path_seg: /mnt/data/eliton/datasets/cgeo/test/seg
-  n_classes: &nclass 5
-  weight_classes: &wclass [1.,1.,2.,2.,1.]
-  prefetch: 1
-  num_workers: 1
-  pin_memory: False
-  drop_last: True
-  shuffle: True
-  augmentation:
-    randomCrop:
-      _target_: albumentations.RandomCrop
-      height: 256
-      width: 256
-    verticalFlip:
-      _target_: albumentations.VerticalFlip
-    horizontalFlip:
-      _target_: albumentations.HorizontalFlip
-    transpose:
-      _target_: albumentations.Transpose
-    randomRotate90:
-      _target_: albumentations.RandomRotate90
-    totensor:
-      _target_: albumentations.pytorch.ToTensorV2
-
-archs:
-  netSeg:
-    # _target_: models.model_unet.UNet
-    _target_: models.model_unet.UNet
-    n_class: *nclass
-
-trainer:
-  _target_: trainer.ignite_trainer_seg.IgniteTrainerSeg
-  optimizer:
-    _target_: torch.optim.Adam
-    lr: 1e-3
-  scheduler:
-    _target_: torch.optim.lr_scheduler.MultiStepLR
-    milestones: [0,25,50,75]
-    gamma: 0.9
-  arch_enc: 'unet'
-  pretrained: False
-  path_pretrained: 'outputs/load_test.pt'
-  begin_seg: 0.
-  num_epochs: 100
-  batch_size: 256
-  upscale_factor: 4
-  save_path: outputs/${name}
-  losses: 
-    cee:
-      _target_: losses.SegLoss
-      weight_classes: *wclass
-  validation:
-    batch_size: 64
-    save_best: miou
-    visualize: True
-    freq: 1
-    n_saved: 2
-  metrics:
-    train:
-      acc:
-        _target_: ignite.metrics.Accuracy
-    val:
-      acc:
-        _target_: ignite.metrics.Accuracy
-      cm:
-        _target_: ignite.metrics.confusion_matrix.ConfusionMatrix
-        num_classes: *nclass
-      iou:
-        _target_: ignite.metrics.IoU
-      cr:
-        _target_: ignite.metrics.ClassificationReport
-      miou:
-        _target_: ignite.metrics.mIoU
 
 tester:
   _target_: trainer.ignite_tester_seg.IgniteTesterSeg

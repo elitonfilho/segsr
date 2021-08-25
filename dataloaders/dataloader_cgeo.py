@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import albumentations as alb
-from albumentations.augmentations.crops.transforms import RandomCrop
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np

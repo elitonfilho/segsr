@@ -1,0 +1,4 @@
+# @package _group_  
+netSeg:
+  _target_: models.model_unet_resnet.UNetResNet
+  n_class: ${dataloader.n_classes}

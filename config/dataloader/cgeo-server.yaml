@@ -1,0 +1,35 @@
+# @package _group_ 
+train: 
+  _target_: dataloaders.CGEODatasetForSegTask
+  path_hr: /mnt/data/eliton/datasets/cgeo/train/hr
+  path_seg: /mnt/data/eliton/datasets/cgeo/train/seg
+  augCfg:
+    randomCrop:
+      _target_: albumentations.RandomCrop
+      height: 256
+      width: 256
+    verticalFlip:
+      _target_: albumentations.VerticalFlip
+    horizontalFlip:
+      _target_: albumentations.HorizontalFlip
+    transpose:
+      _target_: albumentations.Transpose
+    randomRotate90:
+      _target_: albumentations.RandomRotate90
+    totensor:
+      _target_: albumentations.pytorch.ToTensorV2
+val:
+  _target_: dataloaders.CGEODatasetForSegTask
+  path_hr: /mnt/data/eliton/datasets/cgeo/val/hr
+  path_seg: /mnt/data/eliton/datasets/cgeo/val/seg
+test:
+  _target_: dataloaders.CGEODatasetForSegTask
+  path_hr: /mnt/data/eliton/datasets/cgeo/test/hr
+  path_seg: /mnt/data/eliton/datasets/cgeo/test/seg
+n_classes: 5
+weight_classes: [1.,1.,2.,2.,1.]
+prefetch: 1
+num_workers: 1
+pin_memory: False
+drop_last: True
+shuffle: True
