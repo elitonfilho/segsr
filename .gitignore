@@ -5,6 +5,7 @@ epochs/
 results/
 multirun/
 outputs/
+zoo/
 *.png
 *.aux.xml
 *.ipynb_checkpoints

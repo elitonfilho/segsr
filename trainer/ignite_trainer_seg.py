@@ -117,8 +117,8 @@ class IgniteTrainerSeg(BaseTrainer):
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq),
             self.run_validation, evaluator, val_loader)
         self.setup_handlers(evaluator, trainer)
-        if self.cfg.trainer.pretrained:
-            trainer.add_event_handler(Events.STARTED, self.setup_load_state, self.cfg.trainer.path_pretrained)
+        if self.cfg.trainer.pretrained_seg:
+            trainer.add_event_handler(Events.STARTED, self.setup_load_state, self.cfg.trainer.path_pretrained_seg)
         if self.cfg.trainer.scheduler:
             self.setup_schedulers(trainer)
         pbar = ProgressBar()

@@ -1,0 +1,58 @@
+_target_: trainer.ignite_trainer.IgniteTrainer
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 1e-4
+scheduler:
+  _target_: torch.optim.lr_scheduler.MultiStepLR
+  milestones: [0,10]
+  gamma: 0.9
+# path_pretrained_seg: 'outputs/load_test.pt'
+# path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
+# path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
+begin_seg: 0.
+num_epochs: 200
+batch_size: 50
+crop_size: 256
+upscale_factor: 4
+lr: 1e-3
+save_path: outputs/${name}
+losses: 
+  il:
+    _target_: losses.L1Loss
+    loss_weight: 1.0
+  adv:
+    _target_: losses.GANLoss
+    gan_type: 'vanilla'
+    loss_weight: 1.0
+  per:
+    _target_: losses.PerceptualLoss
+    layer_weights: {'conv5_4': 1}
+    perceptual_weight: 1.0
+  tv:
+    _target_: losses.WeightedTVLoss
+    loss_weight: 1.0
+  # seg:
+  #   _target_: losses.SegLoss
+  #   loss_weight: 1.0
+  #   weight_classes: ${dataloader.weight_classes}
+validation:
+  batch_size: 16
+  save_best: 'psnr'
+  visualize: True
+  freq: 5
+  n_saved: 3
+metrics:
+  train:
+    psnr:
+      _target_: ignite.metrics.PSNR
+      data_range: 1.0
+    ssim:
+      _target_: ignite.metrics.SSIM
+      data_range: 1.0
+  val:
+    psnr:
+      _target_: utils.customMetrics.CustomPSNR #ignite.metrics.PSNR
+      data_range: 1.0
+    ssim:
+      _target_: utils.customMetrics.CustomSSIM #ignite.metrics.SSIM
+      data_range: 1.0

@@ -18,7 +18,8 @@ def train(cfg: DictConfig) -> None:
     if isinstance(cfg.gpus, ListConfig) and len(cfg.gpus) > 1:
         nproc_per_node = len(cfg.gpus)
         backend = cfg.backend
-        cfg.trainer.path_pretrained = to_absolute_path(cfg.trainer.path_pretrained)
+        # cfg.trainer.path_pretrained_seg = to_absolute_path(cfg.trainer.path_pretrained_seg)
+        # cfg.trainer.path_pretrained_sr = to_absolute_path(cfg.trainer.path_pretrained_sr)
     else:
         nproc_per_node = None
         backend = None

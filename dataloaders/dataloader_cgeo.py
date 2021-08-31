@@ -48,11 +48,11 @@ def buildAugForSegTask(augCfg) -> alb.Compose:
 
 
 class CGEODataset(Dataset):
-    def __init__(self, path_lr, path_hr, path_seg, augCfg=None):
+    def __init__(self, path_hr, path_seg, augCfg=None):
         super(CGEODataset, self).__init__()
         path_hr = Path(path_hr)
         path_seg = Path(path_seg)
-        filenames = [x.name for x in path_hr.iterdir() if x.suffix in ('.png', '.jpeg')][:12]
+        filenames = [x.name for x in path_hr.iterdir() if x.suffix in ('.png', '.jpeg')]
         self.hr_images = [path_hr / x for x in filenames]
         self.seg_images = [path_seg / x for x in filenames]
         self.aug = buildAug(augCfg)
