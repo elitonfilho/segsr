@@ -11,7 +11,7 @@ import ignite.distributed as idist
 from ignite.handlers import Checkpoint
 from .base_tester import BaseTester
 from torchvision.utils import make_grid, save_image
-
+from torch.profiler import profile, record_function, ProfilerActivity
 
 class IgniteTester(BaseTester):
 
@@ -34,12 +34,13 @@ class IgniteTester(BaseTester):
 
     def run_test(self, engine: Engine, batch: List[Tensor]):
         img_lr, img_hr, label_hr = batch
-        result = self.netG(img_hr.float().cuda())
-        stack = torch.stack((img_lr.float(),label_hr.float(), result.float()))
+        result = self.netG(img_lr.float().cuda())
+        scaled_lr = torch.nn.functional.interpolate(img_lr, (256,256), mode='bicubic')
+        stack = torch.stack((scaled_lr,img_hr, result.cpu())).squeeze()
         grid = make_grid(stack, nrow=3)
         p = Path(self.cfg.tester.save_path)
         save_image(grid,p / f'{engine.state.iteration}_{idist.get_rank()}.png', format='png')
-        save_image(label_hr,p / f'{engine.state.iteration}_{idist.get_rank()}_m.png', format='png')
+        # save_image(label_hr,p / f'{engine.state.iteration}_{idist.get_rank()}_m.png', format='png')
         
     def run(self):
         dataloader = idist.auto_dataloader(self.dataset['test'], batch_size=self.cfg.tester.batch_size)
@@ -47,5 +48,4 @@ class IgniteTester(BaseTester):
         self.setup_handlers(tester)
         tester.logger = setup_logger('Tester')
         Path(self.cfg.tester.save_path).mkdir(exist_ok=True)
-        print(self.cfg.tester.path_pretrained)
         tester.run(dataloader)

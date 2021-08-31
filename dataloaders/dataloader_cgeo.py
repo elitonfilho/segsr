@@ -33,6 +33,10 @@ def buildAug(augCfg) -> alb.Compose:
             additional_targets={
                 'image_lr':'image'
         })
+    else:
+        return alb.Compose([
+            alb.CenterCrop(256,256),
+            ToTensorV2()])
 
 def buildAugForSegTask(augCfg) -> alb.Compose:
     _augList = []

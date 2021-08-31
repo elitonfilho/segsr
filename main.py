@@ -10,7 +10,7 @@ def main(cfg : DictConfig) -> None:
         return train(cfg)
     elif cfg.mode == 'test':
         print(OmegaConf.to_yaml(cfg))
-        # return test(cfg)
+        return test(cfg)
     else:
         raise NotImplementedError
 
