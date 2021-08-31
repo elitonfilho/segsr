@@ -2,18 +2,9 @@ defaults:
   - dataloader: seg-cgeo-home
   - archs: seg-unet
   - trainer: seg-trainer
+  - tester: seg-tester
 
 mode: train
 name: Test1
 gpus: 0
 backend: nccl
-
-tester:
-  _target_: trainer.ignite_tester_seg.IgniteTesterSeg
-  batch_size: 1
-  upscale_factor: 4
-  path_pretrained: '/home/eliton/segsr/outputs/load_test.pt'
-  path_image: 'data/LR/2953-3-SO_1_LR.png'
-  save_path: '/home/eliton/segsr/outputs/test'
-  prefix_save: 'seg'
-

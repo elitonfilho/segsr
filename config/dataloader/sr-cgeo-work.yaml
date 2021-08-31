@@ -1,0 +1,35 @@
+# @package _group_ 
+train: 
+  _target_: dataloaders.CGEODataset
+  path_hr: D:\datasets\cgeoNew\train\hr
+  path_seg: D:\datasets\cgeoNew\train\seg
+  augCfg:
+    randomCrop:
+      _target_: albumentations.RandomCrop
+      height: 256
+      width: 256
+    verticalFlip:
+      _target_: albumentations.VerticalFlip
+    horizontalFlip:
+      _target_: albumentations.HorizontalFlip
+    transpose:
+      _target_: albumentations.Transpose
+    randomRotate90:
+      _target_: albumentations.RandomRotate90
+    totensor:
+      _target_: albumentations.pytorch.ToTensorV2
+val:
+  _target_: dataloaders.CGEODataset
+  path_hr: D:\datasets\cgeoNew\val\hr
+  path_seg: D:\datasets\cgeoNew\val\seg
+test:
+  _target_: dataloaders.CGEODataset
+  path_hr: D:\datasets\cgeoNew\test\hr
+  path_seg: D:\datasets\cgeoNew\test\seg
+n_classes: 5
+weight_classes: [1.,1.,2.,2.,1.]
+prefetch: 1
+num_workers: 1
+pin_memory: True
+drop_last: True
+shuffle: True

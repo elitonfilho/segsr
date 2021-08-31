@@ -9,7 +9,8 @@ def main(cfg : DictConfig) -> None:
         print(OmegaConf.to_yaml(cfg))
         return train(cfg)
     elif cfg.mode == 'test':
-        return test(cfg)
+        print(OmegaConf.to_yaml(cfg))
+        # return test(cfg)
     else:
         raise NotImplementedError
 
