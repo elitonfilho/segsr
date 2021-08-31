@@ -1,17 +1,12 @@
 defaults:
-  - dataloader: cgeo-server
-  - trainer: sr-trainer
+  - dataloader: sr-cgeo-home
   - archs: sr
+  - trainer: sr-trainer
 
 mode: train
 name: Test1
-gpus: [0,1,2]
+gpus: [0]
 backend: nccl
-
-  # netSeg:
-  #   _target_: models.model_unet.UNet
-  #   n_class: ${dataloader.n_classes}
-    
 
 test:
   batch_size: 1

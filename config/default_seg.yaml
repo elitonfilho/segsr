@@ -1,5 +1,5 @@
 defaults:
-  - dataloader: cgeo-home
+  - dataloader: seg-cgeo-home
   - archs: seg-unet
   - trainer: seg-trainer
 
