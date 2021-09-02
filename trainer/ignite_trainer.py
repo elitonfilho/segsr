@@ -1,25 +1,27 @@
-from ignite import metrics
+import logging
+from os import stat, write
+from typing import Iterable, List
+
 import ignite
-from ignite.distributed.utils import get_rank, one_rank_only
-import omegaconf
+import ignite.distributed as idist
+from ignite.distributed import one_rank_only
 import torch
+from hydra.utils import instantiate
+from ignite.contrib.handlers.tqdm_logger import ProgressBar
+from ignite.engine.engine import Engine
+from ignite.engine.events import Events
+from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
+from ignite.handlers.param_scheduler import LRScheduler
+from ignite.metrics import Metric
+from ignite.utils import setup_logger
+from torch.functional import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import DataLoader, Dataset
-from scripts.train import train
-from .base_trainer import BaseTrainer
-from hydra.utils import instantiate
-from utils.utils import AverageMeter
-from typing import List, Dict, Iterable
-import logging
 
-from ignite.engine.engine import Engine
-from ignite.engine.events import Events
-from ignite.metrics import Metric
-from ignite.utils import setup_logger
-import ignite.distributed as idist
-from ignite.handlers import Checkpoint, DiskSaver
-from ignite.contrib.handlers.tqdm_logger import ProgressBar
+from .base_trainer import BaseTrainer
+from tensorboardX import SummaryWriter
+
 
 class IgniteTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs) -> None:
@@ -39,16 +41,13 @@ class IgniteTrainer(BaseTrainer):
         self.optimizerG = idist.auto_optim(self.optimizerG)
         self.optimizerD = idist.auto_optim(self.optimizerD)
 
-        # self.schedulerG = self.schedulers['netG']
-        # self.schedulerD = self.schedulers['netD']
-
         self.img_loss = self.losses['il'].cuda()
         self.adv_loss = self.losses['adv'].cuda()
         self.per_loss = self.losses['per'].cuda()
         self.tv_loss = self.losses['tv'].cuda()
         # self.seg_loss = self.losses['seg'].cuda()
 
-    def train_step(self, engine, batch):
+    def train_step(self, engine: Engine, batch: List[Tensor]):
 
         lr_img, hr_img, seg_img = batch
 
@@ -80,6 +79,9 @@ class IgniteTrainer(BaseTrainer):
         # g_loss = l_img + l_per + l_adv + l_tv + l_seg
         g_loss = l_img + l_per + l_adv + l_tv
 
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
+            l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
+
         g_loss.backward()
 
         self.optimizerG.step()
@@ -101,11 +103,8 @@ class IgniteTrainer(BaseTrainer):
         self.optimizerD.step()
 
         fake_img = self.netG(lr_img)
-        d_fake = self.netD(fake_img).mean()
-        d_real = self.netD(hr_img).mean()
-
-        # self.schedulerD.step()
-        # self.schedulerG.step()
+        # d_fake = self.netD(fake_img).mean()
+        # d_real = self.netD(hr_img).mean()
 
         return fake_img, hr_img
 
@@ -122,12 +121,13 @@ class IgniteTrainer(BaseTrainer):
 
         return sr_img, hr_img
 
-    def run_validation(self, engine: Engine, data: Iterable):
+    def run_validation(self, engine: Engine, data: Iterable, engineRef: Engine):
         engine.run(data)
-        lossesString = ' '.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
-            if engine.state.metrics.values else None
-        if lossesString:
-            engine.logger.info(lossesString)
+        # self.call_summary(self.writer, 'val/metrics', global_step_from_engine(engineRef), engine.state.metrics.items())
+        # lossesString = ' '.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
+        #     if engine.state.metrics.values else None
+        # if lossesString:
+        #     engine.logger.info(lossesString)
 
     def setup_metrics(self, engine: Engine, type: str = 'train'):
         if type == 'train':
@@ -139,12 +139,11 @@ class IgniteTrainer(BaseTrainer):
                 _instance = instantiate(self.cfg.trainer.metrics.val.get(metric))
                 _instance.attach(engine, metric)
 
-    def setup_handlers(self, engine: Engine):
+    def setup_save_state(self, engine: Engine, engineRef: Engine):
         saveDict = {
             'netG': self.netG,
             'netD': self.netD
             }
-        _glb = lambda *_: engine.state.epoch
         _checkpoint = Checkpoint(
             to_save= saveDict,
             save_handler= DiskSaver(self.cfg.trainer.save_path, create_dir=True),
@@ -152,7 +151,8 @@ class IgniteTrainer(BaseTrainer):
             score_function=Checkpoint.get_default_score_fn(self.cfg.trainer.validation.save_best),
             score_name=self.cfg.trainer.validation.save_best,
             n_saved=self.cfg.trainer.validation.n_saved,
-            greater_or_equal=True
+            greater_or_equal=True,
+            global_step_transform=global_step_from_engine(engineRef)
         )
         engine.add_event_handler(Events.EPOCH_COMPLETED, _checkpoint)
 
@@ -171,9 +171,20 @@ class IgniteTrainer(BaseTrainer):
             ckpt = torch.load(path, map_location=f'cuda:{idist.get_rank()}')
             Checkpoint.load_objects(to_load=loadDict, checkpoint=ckpt)
     
-    def setup_pbar(self, trainer):
+    def setup_pbar(self, engine: Engine):
         pbar = ProgressBar()
-        pbar.attach(trainer)
+        pbar.attach(engine)
+
+    def setup_schedulers(self, engine: Engine, optimizer: Optimizer):
+        _instance = instantiate(self.cfg.trainer.get('scheduler'), optimizer=optimizer)
+        _wrapped_instance = LRScheduler(_instance)
+        engine.add_event_handler(Events.ITERATION_COMPLETED, _wrapped_instance)
+
+    @staticmethod
+    @one_rank_only()
+    def call_summary(writer: SummaryWriter, tag: str, globalstep: int, /, **tensors):
+        results = {x:y for x,y in tensors.items()}
+        writer.add_scalars(tag, results, globalstep)
 
     def fit(self):
         # torch.autograd.set_detect_anomaly(True)
@@ -190,9 +201,12 @@ class IgniteTrainer(BaseTrainer):
         self.setup_metrics(validator, 'val')
         trainer.add_event_handler(
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
-            self.run_validation, validator, val_loader)
-        self.setup_handlers(trainer)
+            self.run_validation, validator, val_loader, trainer)
+        self.setup_save_state(validator, trainer)
         self.setup_load_state()
         self.setup_pbar(trainer)
         self.setup_pbar(validator)
+        self.setup_schedulers(trainer, self.optimizerG)
+        self.setup_schedulers(trainer, self.optimizerD)
+        self.writer = SummaryWriter('tensorboard')
         trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)

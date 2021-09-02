@@ -1,11 +1,11 @@
 defaults:
-  - dataloader: sr-cgeo-home
+  - dataloader: sr-cgeo-server
   - archs: sr
   - trainer: sr-trainer
   - trainer/scheduler: multistep
   - tester: sr-tester
 
 mode: train
-name: Test1
-gpus: [0]
+name: sr
+gpus: [0,1,2]
 backend: nccl

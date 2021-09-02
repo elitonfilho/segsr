@@ -1,0 +1,55 @@
+# @package _group_
+_target_: trainer.ignite_trainer.IgniteTrainer
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 1e-4
+scheduler:
+  _target_: torch.optim.lr_scheduler.MultiStepLR
+  milestones: [5]
+  gamma: 0.8
+path_pretrained_seg: 'zoo/pretrained_unet.pt'
+path_pretrained_sr: 'zoo/pretrained_sr.pt'
+begin_seg: 0.
+num_epochs: 10
+batch_size: 44
+save_path: checkpoints/${name}
+losses: 
+  il:
+    _target_: losses.L1Loss
+    loss_weight: 1.0
+  adv:
+    _target_: losses.GANLoss
+    gan_type: 'vanilla'
+    loss_weight: 1.0
+  per:
+    _target_: losses.PerceptualLoss
+    layer_weights: {'conv5_4': 1}
+    perceptual_weight: 1.0
+  tv:
+    _target_: losses.WeightedTVLoss
+    loss_weight: 1.0
+  seg:
+    _target_: losses.SegLoss
+    loss_weight: 1.0
+    weight_classes: ${dataloader.weight_classes}
+validation:
+  batch_size: 22
+  save_best: 'psnr'
+  visualize: True
+  freq: 5
+  n_saved: 1
+metrics:
+  train:
+    psnr:
+      _target_: ignite.metrics.PSNR
+      data_range: 1.0
+    ssim:
+      _target_: ignite.metrics.SSIM
+      data_range: 1.0
+  val:
+    psnr:
+      _target_: utils.customMetrics.CustomPSNR #ignite.metrics.PSNR
+      data_range: 1.0
+    ssim:
+      _target_: utils.customMetrics.CustomSSIM #ignite.metrics.SSIM
+      data_range: 1.0

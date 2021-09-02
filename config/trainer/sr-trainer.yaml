@@ -5,17 +5,15 @@ optimizer:
   lr: 1e-4
 scheduler:
   _target_: torch.optim.lr_scheduler.MultiStepLR
-  milestones: [0,10]
-  gamma: 0.9
+  milestones: [0,10,15]
+  gamma: 0.8
 # path_pretrained_seg: 'outputs/load_test.pt'
 # path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
 # path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
 begin_seg: 0.
-num_epochs: 200
-batch_size: 50
+num_epochs: 20
+batch_size: 48
 crop_size: 256
-upscale_factor: 4
-lr: 1e-3
 save_path: outputs/${name}
 losses: 
   il:
@@ -32,12 +30,8 @@ losses:
   tv:
     _target_: losses.WeightedTVLoss
     loss_weight: 1.0
-  # seg:
-  #   _target_: losses.SegLoss
-  #   loss_weight: 1.0
-  #   weight_classes: ${dataloader.weight_classes}
 validation:
-  batch_size: 16
+  batch_size: 24
   save_best: 'psnr'
   visualize: True
   freq: 5

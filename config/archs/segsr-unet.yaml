@@ -1,0 +1,14 @@
+# @package _group_
+netG:
+  _target_: models.rrdb_arch.RRDBNet
+  num_in_ch: 3
+  num_out_ch: 3
+  num_feat: 64
+  num_block: 23
+netD:
+  _target_: models.vgg_arch.VGG128
+  num_in_ch: 3
+  num_feat: 64
+netSeg:
+  _target_: models.model_unet.UNet
+  n_class: ${dataloader.n_classes}
