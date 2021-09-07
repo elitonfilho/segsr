@@ -72,7 +72,7 @@ class CGEODataset(Dataset):
             lr_image = cv2.resize(lr_image, dstSize, cv2.INTER_CUBIC)
             lr_image = ToTensor()(lr_image)
             seg_image = transformed['mask']
-            return lr_image, hr_image, seg_image
+            return lr_image, hr_image, seg_image, self.hr_images[index].stem
         elif not self.aug:
             # TODO: normalize
             lr_image = np.array(hr_image)

@@ -1,5 +1,4 @@
 import logging
-from os import stat, write
 from typing import Iterable, List
 
 import ignite

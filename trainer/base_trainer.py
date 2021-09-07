@@ -1,5 +1,4 @@
 import abc
-from utils import val_utils
 import torch
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 import logging
