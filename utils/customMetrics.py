@@ -40,7 +40,7 @@ class UQI(Metric):
 
     @reinit__is_reduced
     def reset(self):
-        self._value = torch.tensor(0, device=self._device)
+        self._value = torch.tensor(0, device=self._device, dtype=torch.float)
         self._num_examples = 0
         super(UQI, self).reset()
 
@@ -49,13 +49,13 @@ class UQI(Metric):
         y_pred, y = output[0].detach(), output[1].detach()
         if any((y_pred.dim() > 3, y.dim() > 3)):
             for _y_pred, _y in zip(y_pred[:,...], y[:,...]):
-                self.update(_y_pred, _y)
-
-        y_pred = y_pred.cpu().numpy().transpose((1,2,0))
-        y = y.cpu().numpy().transpose((1,2,0))
-        value = uqi(y, y_pred)
-        self._value += torch.sum(value).to(self._device)
-        self._num_examples += 1
+                self.update((_y_pred, _y))
+        else:
+            y_pred = y_pred.numpy().squeeze().transpose((1,2,0))
+            y = y.numpy().squeeze().transpose((1,2,0))
+            value = torch.tensor(uqi(y, y_pred), requires_grad=False)
+            self._value += torch.sum(value).to(self._device)
+            self._num_examples += 1
 
     @sync_all_reduce("_num_examples", "_value:SUM")
     def compute(self):

@@ -4,6 +4,7 @@ batch_size: 1
 upscale_factor: 4
 path_pretrained: C:\Users\eliton\Documents\ml\segsr\zoo\test.pt
 save_path: C:\Users\eliton\Documents\ml\segsr\test
+savefig_mode: null
 metrics:
   psnr:
     _target_: ignite.metrics.PSNR
@@ -11,3 +12,5 @@ metrics:
   ssim:
     _target_: ignite.metrics.SSIM
     data_range: 1.0
+  uqi:
+    _target_: utils.customMetrics.UQI
