@@ -48,7 +48,7 @@ class IgniteTrainer(BaseTrainer):
 
     def train_step(self, engine: Engine, batch: List[Tensor]):
 
-        lr_img, hr_img, seg_img = batch
+        lr_img, hr_img, seg_img, _ = batch
 
         lr_img = lr_img.cuda().float()
         hr_img = hr_img.cuda().float()
@@ -108,7 +108,7 @@ class IgniteTrainer(BaseTrainer):
         return fake_img, hr_img
 
     def validate_step(self, engine: Engine, batch: Iterable):
-        lr_img, hr_img, seg_img = batch
+        lr_img, hr_img, seg_img, _ = batch
 
         self.netG.eval()
         self.netG.requires_grad_(False)
@@ -121,12 +121,8 @@ class IgniteTrainer(BaseTrainer):
         return sr_img, hr_img
 
     def run_validation(self, engine: Engine, data: Iterable, engineRef: Engine):
-        engine.run(data)
-        # self.call_summary(self.writer, 'val/metrics', global_step_from_engine(engineRef), engine.state.metrics.items())
-        # lossesString = ' '.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
-        #     if engine.state.metrics.values else None
-        # if lossesString:
-        #     engine.logger.info(lossesString)
+        status = engine.run(data)
+        self.call_summary(self.writer, 'val/metrics', engineRef.state.epoch, **status.metrics )
 
     def setup_metrics(self, engine: Engine, type: str = 'train'):
         if type == 'train':
