@@ -55,12 +55,21 @@ class IgniteTester(BaseTester):
         fig.subplots_adjust(wspace=0)
         plt.savefig(f'{self.cfg.tester.save_path}/{name[0]}', bbox_inches='tight', pad_inches=0)
 
-    def generate_grid(self, name, *images):
+    def generate_grid(self, name: str, *images: Sequence[torch.tensor]):
         img_hr, result, scaled_lr, label_hr = images
         stack = torch.cat((scaled_lr,img_hr, result.cpu())).squeeze()
         grid = make_grid(stack, nrow=3)
         p = Path(self.cfg.tester.save_path)
         save_image(grid,p / f'{name[0]}.png', format='png')
+
+    def savefig(self, name: str, image: torch.tensor):
+        image = image.squeeze()
+        if image.ndim == 4:
+            for idx, img in enumerate(image[:,...]):
+                self.savefig([name[idx]], img)
+        else:
+            p = Path(self.cfg.tester.save_path)
+            save_image(image, p / f'{name[0]}.png', format='png')            
 
     def run_test(self, engine: Engine, batch: List[Tensor]):
         img_lr, img_hr, label_hr, name = batch
@@ -70,6 +79,8 @@ class IgniteTester(BaseTester):
             self.generate_plot(name, img_hr, result, scaled_lr, label_hr)
         elif self.cfg.tester.get('savefig_mode', None) == 'torchvision':
             self.generate_grid(name, img_hr, result, scaled_lr, label_hr)
+        elif self.cfg.tester.get('savefig_mode', None) == 'sronly':
+            self.savefig(name, result)
         return result.float().cpu(), img_hr.float().cpu()
 
     def transformFunctionType1(self, *values):
