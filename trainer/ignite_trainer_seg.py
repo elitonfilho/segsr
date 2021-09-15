@@ -4,6 +4,7 @@ from typing import Dict, Iterable, List, Union
 
 import ignite
 import ignite.distributed as idist
+from ignite.distributed import one_rank_only
 from hydra.utils import instantiate
 from ignite.engine import (create_supervised_evaluator,
                            create_supervised_trainer)
@@ -13,14 +14,15 @@ from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
 from ignite.handlers.param_scheduler import LRScheduler
 from ignite.utils import setup_logger
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
+from numpy import PINF
 import torch
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import Dataset
+from tensorboardX import SummaryWriter
 
 from .base_trainer import BaseTrainer
 from ignite.handlers import FastaiLRFinder
-
 
 class IgniteTrainerSeg(BaseTrainer):
     def __init__(self, *args, **kwargs) -> None:
@@ -38,12 +40,9 @@ class IgniteTrainerSeg(BaseTrainer):
 
         self.loss = self.losses['cee'].cuda(device=f'cuda:{idist.get_rank()}')
 
-    def run_validation(self, engine: Engine, data: Iterable) -> None:
-        engine.run(data)
-        lossesString = '\n'.join(f'{key.upper()}:{value}' for key, value in engine.state.metrics.items()) \
-            if engine.state.metrics.values else None
-        if lossesString:
-            engine.logger.info(lossesString)
+    def run_validation(self, engine: Engine,  data: Iterable, engineRef: Engine) -> None:
+        status = engine.run(data)
+        self.call_summary(self.writer, 'val/metrics', engineRef.state.epoch, **status.metrics )
 
     def prepare_batch(self, batch, *args, **kwargs):
         return (
@@ -70,10 +69,9 @@ class IgniteTrainerSeg(BaseTrainer):
         return metrics
 
     def debug_train(self, x, y, ypred, loss):
-#         print('Loss: ', loss.item())
         return loss.item()
 
-    def setup_handlers(self, engine: Engine, trainer: Engine) -> None:
+    def setup_save_handler(self, engine: Engine, trainer: Engine) -> None:
         saveDict = {
             'netSeg': self.netSeg
             }
@@ -101,6 +99,34 @@ class IgniteTrainerSeg(BaseTrainer):
         _wrapped_instance = LRScheduler(_instance)
         engine.add_event_handler(Events.ITERATION_COMPLETED, _wrapped_instance)
 
+    def call_summary_trainer(self, engine: Engine):
+        self.call_summary(self.writer, 'train/metrics',engine.state.epoch, **engine.state.metrics)
+        self.call_summary(self.writer, 'train/loss', engine.state.epoch, l_seg=engine.state.output)
+
+    @staticmethod
+    def setup_pbar(engine: Engine):
+        pbar = ProgressBar()
+        pbar.attach(engine)
+
+    @staticmethod
+    @one_rank_only()
+    def call_summary(writer: SummaryWriter, tag: str, globalstep: int, /, **tensors):
+        scalars = {}
+        for x, y in tensors.items():
+            if isinstance(y, torch.Tensor):
+                text = f'{x}: {(str(z.item()) for z in y.ravel())}'
+                writer.add_text(tag, text, globalstep)
+            elif isinstance(y, dict):
+                for ykey, yvalue in y.items():
+                    text = f'{x}_{ykey}: {yvalue}'
+                    writer.add_text(tag, text, globalstep)
+            elif isinstance(y, str):
+                writer.add_text(tag, f'{x}: {text}', globalstep)
+            else:
+                scalars.update({x:y})
+        # results = {x:y for x,y in tensors.items()}
+        writer.add_scalars(tag, scalars, globalstep)
+
     def fit(self) -> None:
         # torch.autograd.set_detect_anomaly(True)
         train_dataset: Dataset = self.dataloaders['train']
@@ -115,12 +141,14 @@ class IgniteTrainerSeg(BaseTrainer):
 
         trainer.add_event_handler(
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq),
-            self.run_validation, evaluator, val_loader)
-        self.setup_handlers(evaluator, trainer)
-        if self.cfg.trainer.pretrained_seg:
-            trainer.add_event_handler(Events.STARTED, self.setup_load_state, self.cfg.trainer.path_pretrained_seg)
+            self.run_validation, evaluator, val_loader, trainer)
+        self.setup_save_handler(evaluator, trainer)
+        if path_pretrained:=self.cfg.trainer.get('path_pretrained_seg', None):
+            trainer.add_event_handler(Events.STARTED, self.setup_load_state, path_pretrained)
         if self.cfg.trainer.scheduler:
             self.setup_schedulers(trainer)
-        pbar = ProgressBar()
-        pbar.attach(trainer)
-        # trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
+        self.setup_pbar(trainer)
+        self.setup_pbar(evaluator)
+        self.writer = SummaryWriter('tensorboard')
+        trainer.add_event_handler(Events.EPOCH_COMPLETED, self.call_summary_trainer, trainer)
+        trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)

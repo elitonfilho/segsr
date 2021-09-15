@@ -244,7 +244,7 @@ blocks_dict = {
 class HighResolutionNet(nn.Module):
 
     def __init__(self, config, **kwargs):
-        extra = config.hrnet
+        extra = config
         super(HighResolutionNet, self).__init__()
 
         # Check stride
@@ -306,7 +306,7 @@ class HighResolutionNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 in_channels=last_inp_channels,
-                out_channels=config.DATASET.n_classes,
+                out_channels=extra.N_CLASSES,
                 kernel_size=extra.FINAL_CONV_KERNEL,
                 stride=1,
                 padding=1 if extra.FINAL_CONV_KERNEL == 3 else 0)

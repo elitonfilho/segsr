@@ -248,7 +248,7 @@ blocks_dict = {
 class HighResolutionNet(nn.Module):
 
     def __init__(self, config, **kwargs):
-        extra = config.hrnet
+        extra = config
         super(HighResolutionNet, self).__init__()
 
         # stem net

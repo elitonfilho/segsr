@@ -2,32 +2,32 @@
 _target_: trainer.ignite_trainer.IgniteTrainer
 optimizer:
   _target_: torch.optim.Adam
-  lr: 1e-4
+  lr: 1e-3
 scheduler:
   _target_: torch.optim.lr_scheduler.MultiStepLR
-  milestones: [5]
-  gamma: 0.8
+  milestones: [10,20]
+  gamma: 0.5
 path_pretrained_seg: 'zoo/pretrained_unet.pt'
 path_pretrained_sr: 'zoo/pretrained_sr.pt'
 begin_seg: 0.
 num_epochs: 10
 batch_size: 44
-save_path: checkpoints/${name}
+save_path: checkpoints/
 losses: 
   il:
     _target_: losses.L1Loss
-    loss_weight: 1.0
+    loss_weight: 0.1
   adv:
     _target_: losses.GANLoss
     gan_type: 'vanilla'
-    loss_weight: 1.0
+    loss_weight: 0.01
   per:
     _target_: losses.PerceptualLoss
     layer_weights: {'conv5_4': 1}
-    perceptual_weight: 1.0
+    perceptual_weight: 0.01
   tv:
     _target_: losses.WeightedTVLoss
-    loss_weight: 1.0
+    loss_weight: 0.01
   seg:
     _target_: losses.SegLoss
     loss_weight: 1.0

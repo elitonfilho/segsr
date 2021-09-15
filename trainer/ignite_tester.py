@@ -92,13 +92,13 @@ class IgniteTester(BaseTester):
             _instance.attach(engine, metric)
         
     def run(self):
-        dataloader = idist.auto_dataloader(self.dataset['test'], batch_size=self.cfg.tester.batch_size)
+        dataloader = idist.auto_dataloader(self.dataset['test'], batch_size=self.cfg.tester.batch_size, drop_last=self.cfg.dataloader.drop_last)
         tester = Engine(self.run_test)
         self.setup_handlers(tester)
         self.setupMetrics(tester)
-        tester.logger = setup_logger('Tester')
+        tester.logger = setup_logger('Tester', filepath='log.txt')
         Path(self.cfg.tester.save_path).mkdir(exist_ok=True)
         results = tester.run(dataloader)
-        tester.logger.info(results.metrics.get('uqi'))
-        tester.logger.info(results.metrics.get('psnr'))
-        tester.logger.info(results.metrics.get('ssim'))
+        tester.logger.info(f"UQI: {results.metrics.get('uqi')}")
+        tester.logger.info(f"PSNR: {results.metrics.get('psnr')}")
+        tester.logger.info(f"SSIM: {results.metrics.get('ssim')}")

@@ -5,10 +5,9 @@ optimizer:
   lr: 1e-3
 scheduler:
   _target_: torch.optim.lr_scheduler.MultiStepLR
-  milestones: [0,25,50,75]
-  gamma: 0.9
-pretrained: False
-path_pretrained: 'outputs/load_test.pt'
+  milestones: [10,15]
+  gamma: 0.5
+path_pretrained_seg: null
 begin_seg: 0.
 num_epochs: 100
 batch_size: 1
@@ -16,13 +15,14 @@ upscale_factor: 4
 save_path: outputs/${name}
 losses: 
   cee:
-    _target_: losses.SegLoss
-    weight_classes: ${dataloader.weight_classes}
+    _target_: torch.nn.CrossEntropyLoss
+    # _target_: losses.SegLoss
+    # weight_classes: ${dataloader.weight_classes}
 validation:
   batch_size: 1
   save_best: miou
   visualize: True
-  freq: 1
+  freq: 5
   n_saved: 2
 metrics:
   train:
