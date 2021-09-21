@@ -7,11 +7,11 @@ scheduler:
   _target_: torch.optim.lr_scheduler.MultiStepLR
   milestones: [10,20]
   gamma: 0.5
-path_pretrained_seg: 'zoo/pretrained_unet.pt'
-path_pretrained_sr: 'zoo/pretrained_sr.pt'
+path_pretrained_seg: 'zoo/pretrained-unet.pt'
+path_pretrained_sr: 'zoo/pretrained-sr.pt'
 begin_seg: 0.
 num_epochs: 10
-batch_size: 44
+batch_size: 48
 save_path: checkpoints/
 losses: 
   il:
@@ -33,7 +33,7 @@ losses:
     loss_weight: 1.0
     weight_classes: ${dataloader.weight_classes}
 validation:
-  batch_size: 22
+  batch_size: 24
   save_best: 'psnr'
   visualize: True
   freq: 5

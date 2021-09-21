@@ -7,6 +7,7 @@ from ignite.distributed import one_rank_only
 import torch
 from hydra.utils import instantiate
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
+from ignite.handlers.terminate_on_nan import TerminateOnNan
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
@@ -74,7 +75,7 @@ class IgniteTrainer(BaseTrainer):
         l_adv = (l_g_real + l_g_fake)/2
 
         label_pred = self.netSeg(fake_img)
-        l_seg = self.seg_loss(label_pred, seg_img).long()
+        l_seg = self.seg_loss(label_pred, seg_img)
         g_loss = l_img + l_per + l_adv + l_tv + l_seg
         # g_loss = l_img + l_per + l_adv + l_tv
 
@@ -166,6 +167,7 @@ class IgniteTrainer(BaseTrainer):
             ckpt = torch.load(path, map_location=f'cuda:{idist.get_rank()}')
             Checkpoint.load_objects(to_load=loadDict, checkpoint=ckpt)
     
+    @one_rank_only()
     def setup_pbar(self, engine: Engine):
         pbar = ProgressBar()
         pbar.attach(engine)
@@ -197,6 +199,7 @@ class IgniteTrainer(BaseTrainer):
         trainer.add_event_handler(
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
             self.run_validation, validator, val_loader, trainer)
+        trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
         self.setup_save_state(validator, trainer)
         self.setup_load_state()
         self.setup_pbar(trainer)

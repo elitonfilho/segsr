@@ -7,9 +7,6 @@ scheduler:
   _target_: torch.optim.lr_scheduler.MultiStepLR
   milestones: [0,10,15]
   gamma: 0.8
-# path_pretrained_seg: 'outputs/load_test.pt'
-# path_pretrained_g: 'epochs/seg1-new-sr-only_g.pth'
-# path_pretrained_d: 'epochs/seg1-new-sr-only_d.pth'
 begin_seg: 0.
 num_epochs: 20
 batch_size: 48

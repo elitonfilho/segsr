@@ -2,9 +2,10 @@ defaults:
   - dataloader: seg-cgeo-home
   - archs: seg-unet
   - trainer: seg-trainer
+  - trainer/scheduler: multistep
   - tester: seg-tester
 
 mode: train
-name: Test1
-gpus: 0
+name: seg
+gpus: [0,1,2]
 backend: nccl
