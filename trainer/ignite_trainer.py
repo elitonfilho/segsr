@@ -29,11 +29,11 @@ class IgniteTrainer(BaseTrainer):
 
         self.netG: Module = self.models['netG'].cuda().train()
         self.netD: Module = self.models['netD'].cuda().train()
-        self.netSeg: Module = self.models['netSeg'].cuda().eval()
+        # self.netSeg: Module = self.models['netSeg'].cuda().eval()
         
         self.netG = idist.auto_model(self.netG)
         self.netD = idist.auto_model(self.netD)
-        self.netSeg = idist.auto_model(self.netSeg)
+        # self.netSeg = idist.auto_model(self.netSeg)
 
         self.optimizerG: Optimizer = self.optimizers['netG']
         self.optimizerD: Optimizer = self.optimizers['netD']
@@ -45,7 +45,7 @@ class IgniteTrainer(BaseTrainer):
         self.adv_loss = self.losses['adv'].cuda()
         self.per_loss = self.losses['per'].cuda()
         self.tv_loss = self.losses['tv'].cuda()
-        self.seg_loss = self.losses['seg'].cuda()
+        # self.seg_loss = self.losses['seg'].cuda()
 
     def train_step(self, engine: Engine, batch: List[Tensor]):
 
@@ -74,13 +74,14 @@ class IgniteTrainer(BaseTrainer):
         l_g_fake = self.adv_loss(d_fake - torch.mean(d_real), True, is_disc=False)
         l_adv = (l_g_real + l_g_fake)/2
 
-        label_pred = self.netSeg(fake_img)
-        l_seg = self.seg_loss(label_pred, seg_img)
-        g_loss = l_img + l_per + l_adv + l_tv + l_seg
-        # g_loss = l_img + l_per + l_adv + l_tv
+        # label_pred = self.netSeg(fake_img)
+        # l_seg = self.seg_loss(label_pred, seg_img)
+        # g_loss = l_img + l_per + l_adv + l_tv + l_seg
+        g_loss = l_img + l_per + l_adv + l_tv
 
         self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
-            l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item(), l_seg=l_seg.item())
+            l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
+            # l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item(), l_seg=l_seg.item())
 
         g_loss.backward()
 

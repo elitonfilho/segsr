@@ -2,31 +2,26 @@
 _target_: trainer.ignite_trainer.IgniteTrainer
 optimizer:
   _target_: torch.optim.Adam
-  lr: 1e-4
-scheduler:
-  _target_: torch.optim.lr_scheduler.MultiStepLR
-  milestones: [0,10,15]
-  gamma: 0.8
+  lr: 1e-3
 begin_seg: 0.
-num_epochs: 20
+num_epochs: 45
 batch_size: 48
-crop_size: 256
-save_path: outputs/${name}
-losses: 
+save_path: checkpoints/
+losses:
   il:
     _target_: losses.L1Loss
-    loss_weight: 1.0
+    loss_weight: 0.1
   adv:
     _target_: losses.GANLoss
     gan_type: 'vanilla'
-    loss_weight: 1.0
+    loss_weight: 0.01
   per:
     _target_: losses.PerceptualLoss
     layer_weights: {'conv5_4': 1}
-    perceptual_weight: 1.0
+    perceptual_weight: 0.01
   tv:
     _target_: losses.WeightedTVLoss
-    loss_weight: 1.0
+    loss_weight: 0.01
 validation:
   batch_size: 24
   save_best: 'psnr'

@@ -3,10 +3,6 @@ _target_: trainer.ignite_trainer.IgniteTrainer
 optimizer:
   _target_: torch.optim.Adam
   lr: 1e-3
-scheduler:
-  _target_: torch.optim.lr_scheduler.MultiStepLR
-  milestones: [10,20]
-  gamma: 0.5
 path_pretrained_seg: 'zoo/pretrained-unet.pt'
 path_pretrained_sr: 'zoo/pretrained-sr.pt'
 begin_seg: 0.

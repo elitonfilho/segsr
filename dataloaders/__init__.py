@@ -5,7 +5,7 @@ from typing import Dict
 
 from .dataloader_cgeo import CGEODataset, CGEODatasetForSegTask
 from .dataloader_landcover import LandCoverDataset
-from .dataloader_landcoverai import LandCoverAIDataset
+from .dataloader_landcoverai import LandCoverAIDataset, LandCoverAIDatasetForSegTask
 # TODO: support dynamic import with importlib
 
 def get_dataloaders(cfg: DictConfig) -> Dict:

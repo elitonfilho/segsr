@@ -1,0 +1,31 @@
+# @package _group_ 
+train: 
+  _target_: dataloaders.LandCoverAIDatasetForSegTask
+  path_hr: /mnt/data/eliton/datasets/landcoverai/train_hr
+  path_seg: /mnt/data/eliton/datasets/landcoverai/train_mask
+  augCfg:
+    verticalFlip:
+      _target_: albumentations.VerticalFlip
+    horizontalFlip:
+      _target_: albumentations.HorizontalFlip
+    transpose:
+      _target_: albumentations.Transpose
+    randomRotate90:
+      _target_: albumentations.RandomRotate90
+    totensor:
+      _target_: albumentations.pytorch.ToTensorV2
+val:
+  _target_: dataloaders.LandCoverAIDatasetForSegTask
+  path_hr: /mnt/data/eliton/datasets/landcoverai/val_hr
+  path_seg: /mnt/data/eliton/datasets/landcoverai/val_mask
+test:
+  _target_: dataloaders.LandCoverAIDatasetForSegTask
+  path_hr: /mnt/data/eliton/datasets/landcoverai/val_hr
+  path_seg: /mnt/data/eliton/datasets/landcoverai/val_mask
+n_classes: 4
+weight_classes: [1.,1.,1.,1.]
+prefetch: 1
+num_workers: 1
+pin_memory: True
+drop_last: True
+shuffle: True
