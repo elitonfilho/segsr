@@ -5,4 +5,4 @@ upscale_factor: 4
 path_pretrained: '/home/eliton/segsr/outputs/load_test.pt'
 path_image: 'data/LR/2953-3-SO_1_LR.png'
 save_path: '/home/eliton/segsr/outputs/test'
-prefix_save: 'seg'
+savefig_mode: null
