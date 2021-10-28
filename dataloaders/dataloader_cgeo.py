@@ -100,10 +100,10 @@ class CGEODatasetForSegTask(Dataset):
             transformed = self.aug(image=hr_image/255., mask=seg_image)
             hr_image = transformed['image']
             seg_image = transformed['mask']
-            return hr_image, seg_image
+            return hr_image, seg_image, self.hr_images[index].stem
         elif not self.aug:
             # TODO: normalize
-            return ToTensor()(hr_image), torch.tensor(seg_image)
+            return ToTensor()(hr_image), torch.tensor(seg_image), self.hr_images[index].stem
 
     def __len__(self):
         return len(self.hr_images)

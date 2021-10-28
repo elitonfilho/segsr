@@ -84,4 +84,4 @@ class LandCoverAIDatasetForSegTask(Dataset):
         else:
             hr_image = ToTensor()(hr_image)
             seg_image = torch.tensor(np.array(seg_image, dtype=np.int32))
-        return hr_image, seg_image
+        return hr_image, seg_image, self.hr_images[index].stem

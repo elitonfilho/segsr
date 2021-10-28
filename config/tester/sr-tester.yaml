@@ -2,8 +2,8 @@
 _target_: trainer.ignite_tester.IgniteTester
 batch_size: 1
 upscale_factor: 4
-path_pretrained: C:\Users\eliton\Documents\ml\segsr\zoo\test.pt
-save_path: C:\Users\eliton\Documents\ml\segsr\test
+path_pretrained: C:\Users\eliton\Documents\ml\segsr\zoo\pretrained-segsr.pt
+save_path: D:\_ml\segsr
 savefig_mode: null
 metrics:
   psnr:
