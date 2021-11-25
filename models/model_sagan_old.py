@@ -1,10 +1,10 @@
+from typing import ForwardRef
 import torch
 from torch import nn
 from torch.nn.init import xavier_uniform_
 from torch.nn.functional import interpolate
 from torch.nn.modules.activation import ReLU, Tanh
 from torch.nn.modules.batchnorm import BatchNorm2d
-from torch.nn.modules.container import Sequential
 from torch.nn.modules.conv import Conv2d
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.module import Module
@@ -55,30 +55,29 @@ class ConditionalBatchNorm2d(nn.Module):
         super().__init__()
         self.n_feat = n_feat
         self.bn = nn.BatchNorm2d(n_feat, 0.001, False)
-        self.embed = nn.Embedding(n_class, n_feat*2 )
+        self.embed = nn.Embedding(n_feat*2, n_class)
         self.embed.weight.data[:, :n_feat].fill_(1.)
         self.embed.weight.data[:, n_feat:].zero_()
 
     def forward(self, x, y):
         out = self.bn(x)
         print(out.shape)
-        print(self.embed(y).shape)
-        gamma, beta = self.embed(y).chunk(2, 1) # CHECK
+        print(self.embed(y.long()).shape)
+        gamma, beta = self.embed(y.long()).chunk(2, 1) # CHECK
         print(gamma.shape, beta.shape)
         out = gamma.view(-1, self.n_feat, 1, 1) * out + beta.view(-1, self.n_feat, 1, 1)
         return out
 
 class GenBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, n_class, interpolate=True):
+    def __init__(self, in_ch, out_ch, n_class):
         super().__init__()
-        self.cbn1 = ConditionalBatchNorm2d(in_ch, n_class)
-        self.interpolate = interpolate
-        # self.cbn1 = BatchNorm2d(in_ch)
+        # self.cbn1 = ConditionalBatchNorm2d(in_ch, n_class)
+        self.cbn1 = BatchNorm2d(in_ch)
         self.snconv1 = spectral_conv(in_ch,out_ch,3,1,1)
         # parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
         self.relu = ReLU()
-        self.cbn2 = ConditionalBatchNorm2d(out_ch, n_class)
-        # self.cbn2 = BatchNorm2d(out_ch)
+        # self.cbn2 = ConditionalBatchNorm2d(out_ch, n_class)
+        self.cbn2 = BatchNorm2d(out_ch)
         self.snconv2 = spectral_conv(out_ch,out_ch,3,1,1)
         # parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
         self.snconv3 = spectral_conv(in_ch,out_ch,1,1)
@@ -87,34 +86,31 @@ class GenBlock(nn.Module):
     def forward(self, x, label):
         # Maybe copy??
         _x = x
-        x = self.cbn1(x, label)
-        # x = self.cbn1(x)
+        # x = self.cbn1(x, label)
+        x = self.cbn1(x)
         x = self.relu(x)
-        if self.interpolate:
-            x = interpolate(x, scale_factor=2)
+        x = interpolate(x, scale_factor=2)
         x = self.snconv1(x)
         x = self.cbn2(x)
         x = self.relu(x)
         x = self.snconv2(x)
 
-        if self.interpolate:
-            _x = interpolate(_x, scale_factor=2)
+        _x = interpolate(_x, scale_factor=2)
         _x = self.snconv3(_x)
 
         return x + _x
 
 class Generator(nn.Module):
-    def __init__(self, g_dim, n_class):
+    def __init__(self, z_dim, g_dim, n_class):
         super().__init__()
         self.g_dim = g_dim
-        sconv1 = spectral_conv(3,g_dim*16, 1, 1, 0)
-        self.v1 = Sequential(sconv1, BatchNorm2d(g_dim*16), ReLU())
-        self.block1 = GenBlock(g_dim*16, g_dim*16, n_class, interpolate=False)
+        self.snlin = nn.Linear(z_dim, g_dim*16*4*4)
+        self.block1 = GenBlock(g_dim*16, g_dim*16, n_class)
         self.block2 = GenBlock(g_dim*16, g_dim*8, n_class)
-        self.block3 = GenBlock(g_dim*8, g_dim*4, n_class, interpolate==False)
+        self.block3 = GenBlock(g_dim*8, g_dim*4, n_class)
         self.att = SelfAttention(g_dim*4)
         self.block4 = GenBlock(g_dim*4, g_dim*2, n_class)
-        self.block5 = GenBlock(g_dim*2, g_dim, n_class, interpolate=False)
+        self.block5 = GenBlock(g_dim*2, g_dim, n_class)
         self.bn = BatchNorm2d(g_dim, momentum=1e-4)
         self.relu = ReLU()
         self.snconv = spectral_conv(g_dim, 3, 3, 1, 1)
@@ -123,13 +119,8 @@ class Generator(nn.Module):
         # self.apply(init_weights)
 
     def forward(self, x, label):
-        bs, c, h, w = x.shape
-        print('X:', x.shape)
-        # x = x.view(bs, -1, h*w)
-        # print('X after view:', x.shape)
-        x = self.v1(x)
-        # print('After Linear:', x.shape)
-        # x = x.view(bs, -1,4,4)
+        x = self.snlin(x)
+        x = x.view(-1, self.g_dim*16,4,4)
         print('Before B1:', x.shape)
         x = self.block1(x,label)
         print('After B1:', x.shape)
@@ -152,14 +143,14 @@ class Generator(nn.Module):
 class DiscOptBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
-        self.snconv1 = spectral_norm(Conv2d(in_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
+        self.snconv1 = Conv2d(in_ch,out_ch,3,1,1)
+        parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
         self.relu = ReLU()
-        self.snconv2 = spectral_norm(Conv2d(out_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
+        self.snconv2 = Conv2d(out_ch,out_ch,3,1,1)
+        parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
         self.downsample = AvgPool2d(2)
-        self.snconv3 = spectral_norm(Conv2d(in_ch,out_ch,1,1,0))
-        # parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
+        self.snconv3 = Conv2d(in_ch,out_ch,1,1,0)
+        parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
 
     def forward(self, x):
         _x = x
@@ -178,14 +169,14 @@ class DiscBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.relu = ReLU()
-        self.snconv1 = spectral_norm(Conv2d(in_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
-        self.snconv2 = spectral_norm(Conv2d(out_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
+        self.snconv1 = Conv2d(in_ch,out_ch,3,1,1)
+        parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
+        self.snconv2 = Conv2d(in_ch,out_ch,3,1,1)
+        parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
         self.downsample = AvgPool2d(2)
         self.ch_mismatch = False if in_ch == out_ch else True
-        self.snconv3 = spectral_norm(Conv2d(in_ch,out_ch,1,1,0))
-        # parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
+        self.snconv3 = Conv2d(in_ch,out_ch,1,1,0)
+        parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
 
     def forward(self, x, downsample=True):
         _x = x
@@ -198,7 +189,7 @@ class DiscBlock(nn.Module):
             x = self.downsample(x)
 
         if downsample or self.ch_mismatch:
-            _x = self.snconv3(_x)
+            _x = self.snconv2(_x)
             if downsample:
                 _x = self.downsample(_x)
 
@@ -218,10 +209,10 @@ class Discriminator(nn.Module):
         self.block4 = DiscBlock(d_dim*8, d_dim*16)
         self.block5 = DiscBlock(d_dim*16, d_dim*16)
         self.relu = nn.ReLU(inplace=True)
-        self.snlinear = spectral_norm(Linear(d_dim*16,1))
-        # parametrize.register_parametrization(self.snlinear, 'weight', spectral_norm(self.snlinear))
-        self.snembed = spectral_norm(Embedding(n_class,d_dim*16))
-        # parametrize.register_parametrization(self.snembed, 'weight',SS spectral_norm(self.snembed))
+        self.snlinear = Linear(d_dim*16,1)
+        parametrize.register_parametrization(self.snlinear, 'weight', spectral_norm(self.snlinear))
+        self.snembed = Embedding(d_dim*16, n_class)
+        parametrize.register_parametrization(self.snembed, 'weight', spectral_norm(self.snembed))
 
         # self.apply(init_weights)
         # xavier_uniform_(self.snembed.weight)
@@ -239,19 +230,17 @@ class Discriminator(nn.Module):
         output1 = torch.squeeze(self.snlinear(x))
         # Projection
         h_labels = self.snembed(label)
-        x = x.unsqueeze(1).unsqueeze(1) #Mod
-        print(x.shape, h_labels.shape)
         proj = torch.mul(x, h_labels)
-        output2 = torch.sum(proj, dim=[1,2,3]) # Mod, was dim[1]
+        output2 = torch.sum(proj, dim=[1])
         output = output1 + output2
         return output
 
 if __name__ == '__main__':
-    # g = Generator(8,2).to('cuda:0')
-    d = Discriminator(4,2).to('cuda:0')
+    g = Generator(16,4,2).to('cuda:0')
+    # d = Discriminator(64,2).to('gpu:0')
     import torch
-    a = torch.ones(2,3,256,256, device='cuda:0')
-    b = torch.ones(2,256,256, device='cuda:0', dtype=torch.int)
+    a = torch.ones(1,3,16,16, device='cuda:0')
+    b = torch.ones(1,16,16, device='cuda:0')
     # print(a.shape)
-    print(d(a,b).shape)
-    # print(g(a,b).shape)
+    # print(d(a,b).shape)
+    print(g(a,b).shape)

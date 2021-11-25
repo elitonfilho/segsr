@@ -1,0 +1,46 @@
+# @package _group_
+_target_: trainer.ignite_sagan_trainer.IgniteSaganTrainer
+optimizer:
+  _target_: torch.optim.Adam
+  lr: 1e-3
+begin_seg: 0.
+std_noise: 1
+num_epochs: 45
+batch_size: 2
+save_path: checkpoints/
+losses:
+  il:
+    _target_: losses.L1Loss
+    loss_weight: 0.1
+  adv:
+    _target_: losses.GANLoss
+    gan_type: 'vanilla'
+    loss_weight: 0.01
+  per:
+    _target_: losses.PerceptualLoss
+    layer_weights: {'conv5_4': 1}
+    perceptual_weight: 0.01
+  tv:
+    _target_: losses.WeightedTVLoss
+    loss_weight: 0.01
+validation:
+  batch_size: 2
+  save_best: 'psnr'
+  visualize: True
+  freq: 5
+  n_saved: 3
+metrics:
+  train:
+    psnr:
+      _target_: ignite.metrics.PSNR
+      data_range: 1.0
+    ssim:
+      _target_: ignite.metrics.SSIM
+      data_range: 1.0
+  val:
+    psnr:
+      _target_: utils.customMetrics.CustomPSNR #ignite.metrics.PSNR
+      data_range: 1.0
+    ssim:
+      _target_: utils.customMetrics.CustomSSIM #ignite.metrics.SSIM
+      data_range: 1.0

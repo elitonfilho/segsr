@@ -1,0 +1,9 @@
+# @package _group_
+netG:
+  _target_: models.model_sagan.Generator
+  g_dim: 8
+  n_class: ${dataloader.n_classes}
+netD:
+  _target_: models.model_sagan.Discriminator
+  d_dim: 4
+  n_class: ${dataloader.n_classes}
