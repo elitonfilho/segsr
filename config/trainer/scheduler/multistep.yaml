@@ -1,4 +1,4 @@
 # @package _group_ 
 _target_: torch.optim.lr_scheduler.MultiStepLR
-milestones: [15,30]
-gamma: 0.5
+milestones: [25]
+gamma: 0.1

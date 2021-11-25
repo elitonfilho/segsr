@@ -1,0 +1,8 @@
+# SWEEP TRAIN CGEO UNET
+python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=segsr-trainer trainer.num_epochs=50 trainer.path_pretrained_seg='zoo/pretrained-unet.pt' trainer.path_pretrained_sr='zoo/pretrained-sr.pt' trainer.batch_size=14 trainer.validation.batch_size=14
+# SWEEP TRAIN LCAI UNET
+python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=segsr-trainer dataloader=sr-lcai-server trainer.num_epochs=50 trainer.path_pretrained_seg='zoo/new-pretrained-seg-unet-lcai.pt' trainer.path_pretrained_sr='zoo/new-pretrained-sr-lcai.pt' trainer.batch_size=14 trainer.validation.batch_size=14
+# SWEEP TRAIN CGEO HRNET
+python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=segsr-trainer trainer.num_epochs=50 archs=segsr-hrnet trainer.path_pretrained_seg='zoo/pretrained-hrnet.pt' trainer.path_pretrained_sr='zoo/pretrained-sr.pt' trainer.batch_size=14 trainer.validation.batch_size=14
+# SWEEP TRAIN LCAI HRNET
+python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=segsr-trainer dataloader=sr-lcai-server trainer.num_epochs=50 archs=segsr-hrnet trainer.path_pretrained_seg='zoo/new-pretrained-seg-hrnet-lcai.pt' trainer.path_pretrained_sr='zoo/new-pretrained-sr-lcai.pt' trainer.batch_size=14 trainer.validation.batch_size=14

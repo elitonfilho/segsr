@@ -68,7 +68,7 @@ class IgniteTrainerSeg(BaseTrainer):
                 metrics.update({metric:_instance})
         return metrics
 
-    def debug_train(self, x, y, ypred, loss):
+    def debug_train(self, x: torch.Tensor, y: torch.Tensor, ypred: torch.Tensor, loss) -> float:
         return loss.item()
 
     def setup_save_handler(self, engine: Engine, trainer: Engine) -> None:
@@ -114,7 +114,7 @@ class IgniteTrainerSeg(BaseTrainer):
         scalars = {}
         for x, y in tensors.items():
             if isinstance(y, torch.Tensor):
-                text = f'{x}: {(str(z.item()) for z in y.ravel())}'
+                text = f'{x}: {"".join(str(z.item()) for z in y.ravel())}'
                 writer.add_text(tag, text, globalstep)
             elif isinstance(y, dict):
                 for ykey, yvalue in y.items():

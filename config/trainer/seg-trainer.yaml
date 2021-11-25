@@ -19,7 +19,7 @@ validation:
   save_best: miou
   visualize: True
   freq: 5
-  n_saved: 2
+  n_saved: 1
 metrics:
   train:
     acc:

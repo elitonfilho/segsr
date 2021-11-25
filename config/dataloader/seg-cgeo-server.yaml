@@ -27,7 +27,7 @@ test:
   path_hr: /mnt/data/eliton/datasets/cgeo/test/hr
   path_seg: /mnt/data/eliton/datasets/cgeo/test/seg
 n_classes: 5
-weight_classes: [1.,1.,2.,2.,1.]
+weight_classes: [1.,1.,1.,1.,1.]
 prefetch: 1
 num_workers: 1
 pin_memory: True
