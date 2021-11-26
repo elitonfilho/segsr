@@ -61,11 +61,8 @@ class ConditionalBatchNorm2d(nn.Module):
 
     def forward(self, x, y):
         out = self.bn(x)
-        print(out.shape)
-        print(self.embed(y).shape)
-        gamma, beta = self.embed(y).chunk(2, 1) # CHECK
-        print(gamma.shape, beta.shape)
-        out = gamma.view(-1, self.n_feat, 1, 1) * out + beta.view(-1, self.n_feat, 1, 1)
+        gamma, beta = self.embed(y).permute(0,3,1,2).chunk(2, 1) # CHECK
+        out = gamma * out + beta
         return out
 
 class GenBlock(nn.Module):
@@ -75,14 +72,11 @@ class GenBlock(nn.Module):
         self.interpolate = interpolate
         # self.cbn1 = BatchNorm2d(in_ch)
         self.snconv1 = spectral_conv(in_ch,out_ch,3,1,1)
-        # parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
         self.relu = ReLU()
         self.cbn2 = ConditionalBatchNorm2d(out_ch, n_class)
         # self.cbn2 = BatchNorm2d(out_ch)
         self.snconv2 = spectral_conv(out_ch,out_ch,3,1,1)
-        # parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
         self.snconv3 = spectral_conv(in_ch,out_ch,1,1)
-        # parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
 
     def forward(self, x, label):
         # Maybe copy??
@@ -93,7 +87,9 @@ class GenBlock(nn.Module):
         if self.interpolate:
             x = interpolate(x, scale_factor=2)
         x = self.snconv1(x)
-        x = self.cbn2(x)
+        if self.interpolate:
+            x = self.cbn2(x,interpolate(label.unsqueeze(1).float(), scale_factor=2).squeeze(1).int())
+        # x = self.cbn2(x)
         x = self.relu(x)
         x = self.snconv2(x)
 
@@ -111,41 +107,27 @@ class Generator(nn.Module):
         self.v1 = Sequential(sconv1, BatchNorm2d(g_dim*16), ReLU())
         self.block1 = GenBlock(g_dim*16, g_dim*16, n_class, interpolate=False)
         self.block2 = GenBlock(g_dim*16, g_dim*8, n_class)
-        self.block3 = GenBlock(g_dim*8, g_dim*4, n_class, interpolate==False)
+        self.block3 = GenBlock(g_dim*8, g_dim*4, n_class, interpolate=False)
         self.att = SelfAttention(g_dim*4)
         self.block4 = GenBlock(g_dim*4, g_dim*2, n_class)
         self.block5 = GenBlock(g_dim*2, g_dim, n_class, interpolate=False)
         self.bn = BatchNorm2d(g_dim, momentum=1e-4)
         self.relu = ReLU()
         self.snconv = spectral_conv(g_dim, 3, 3, 1, 1)
-        # parametrize.register_parametrization(self.snconv, 'weight', spectral_norm(self.snconv))
         self.tanh = Tanh()
         # self.apply(init_weights)
 
     def forward(self, x, label):
-        bs, c, h, w = x.shape
-        print('X:', x.shape)
-        # x = x.view(bs, -1, h*w)
-        # print('X after view:', x.shape)
         x = self.v1(x)
-        # print('After Linear:', x.shape)
-        # x = x.view(bs, -1,4,4)
-        print('Before B1:', x.shape)
-        x = self.block1(x,label)
-        print('After B1:', x.shape)
-        x = self.block2(x,label)
-        print('After B2:', x.shape)
-        x = self.block3(x,label)
-        print('After B3:', x.shape)
+        x = self.block1(x,interpolate(label.unsqueeze(1).float(), scale_factor=.25).squeeze(1).int())
+        x = self.block2(x,interpolate(label.unsqueeze(1).float(), scale_factor=.25).squeeze(1).int())
+        x = self.block3(x,interpolate(label.unsqueeze(1).float(), scale_factor=.5).squeeze(1).int())
         x = self.att(x)
-        x = self.block4(x,label)
-        print('After B4:', x.shape)
+        x = self.block4(x,interpolate(label.unsqueeze(1).float(), scale_factor=.5).squeeze(1).int())
         x = self.block5(x,label)
-        print('After B5:', x.shape)
         x = self.bn(x)
         x = self.relu(x)
         x = self.snconv(x)
-        print('After last conv:', x.shape)
         x = self.tanh(x)
         return x
 
@@ -153,13 +135,10 @@ class DiscOptBlock(nn.Module):
     def __init__(self, in_ch, out_ch):
         super().__init__()
         self.snconv1 = spectral_norm(Conv2d(in_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
         self.relu = ReLU()
         self.snconv2 = spectral_norm(Conv2d(out_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
         self.downsample = AvgPool2d(2)
         self.snconv3 = spectral_norm(Conv2d(in_ch,out_ch,1,1,0))
-        # parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
 
     def forward(self, x):
         _x = x
@@ -179,13 +158,10 @@ class DiscBlock(nn.Module):
         super().__init__()
         self.relu = ReLU()
         self.snconv1 = spectral_norm(Conv2d(in_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv1, 'weight', spectral_norm(self.snconv1))
         self.snconv2 = spectral_norm(Conv2d(out_ch,out_ch,3,1,1))
-        # parametrize.register_parametrization(self.snconv2, 'weight', spectral_norm(self.snconv2))
         self.downsample = AvgPool2d(2)
         self.ch_mismatch = False if in_ch == out_ch else True
         self.snconv3 = spectral_norm(Conv2d(in_ch,out_ch,1,1,0))
-        # parametrize.register_parametrization(self.snconv3, 'weight', spectral_norm(self.snconv3))
 
     def forward(self, x, downsample=True):
         _x = x
@@ -240,9 +216,9 @@ class Discriminator(nn.Module):
         # Projection
         h_labels = self.snembed(label)
         x = x.unsqueeze(1).unsqueeze(1) #Mod
-        print(x.shape, h_labels.shape)
         proj = torch.mul(x, h_labels)
-        output2 = torch.sum(proj, dim=[1,2,3]) # Mod, was dim[1]
+        # output2 = torch.sum(proj, dim=[1,2,3]) # Mod, was dim[1]
+        output2 = torch.mean(proj, dim=(1,2,3))
         output = output1 + output2
         return output
 
