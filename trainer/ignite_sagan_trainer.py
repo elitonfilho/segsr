@@ -84,7 +84,7 @@ class IgniteSaganTrainer(BaseTrainer):
         # Train with real
 
         fake = self.netG(lr_img, seg_img)
-        noise = torch.normal(noise_mean, noise_std, dtype=torch.float, device=idist.device())
+        noise = torch.normal(noise_mean, noise_std).to(torch.float).to(idist.device())
         d_out_fake = self.netD(fake.detach() + noise, seg_img)
         d_loss_real = self.adv_loss(d_out_fake, True, is_disc=True)
         d_loss_real.backward()
@@ -95,9 +95,11 @@ class IgniteSaganTrainer(BaseTrainer):
 
         self.netD.eval()
         self.netG.train()
+        noise_mean = torch.full_like(lr_img, 0)
+        noise_std = torch.full_like(lr_img, self.cfg.trainer.std_noise)
 
-        noise = torch.normal(noise_mean, noise_std, dtype=torch.float, device=idist.device())
-        g_out_fake = self.netD(fake + noise)
+        noise = torch.normal(noise_mean, noise_std).to(torch.float).to(idist.device())
+        g_out_fake = self.netG(lr_img + noise, seg_img)
         g_loss_fake = self.adv_loss(g_out_fake, False, is_disc=False)
         g_loss_fake.backward()
 
