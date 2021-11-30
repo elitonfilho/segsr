@@ -2,14 +2,13 @@
 _target_: trainer.ignite_sagan_trainer.IgniteSaganTrainer
 optimizer:
   _target_: torch.optim.Adam
-  lr: 1e-3
-begin_seg: 0.
+  lr: 1e-4
 std_noise: 1
-num_epochs: 45
-batch_size: 2
+num_epochs: 200
+batch_size: 9
 save_path: checkpoints/
 losses:
-  il:
+  l1:
     _target_: losses.L1Loss
     loss_weight: 0.1
   adv:
@@ -24,11 +23,11 @@ losses:
     _target_: losses.WeightedTVLoss
     loss_weight: 0.01
 validation:
-  batch_size: 2
+  batch_size: 9
   save_best: 'psnr'
   visualize: True
   freq: 5
-  n_saved: 3
+  n_saved: 2
 metrics:
   train:
     psnr:

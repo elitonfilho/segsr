@@ -5,6 +5,5 @@ pandas
 tqdm
 tensorboardX
 hydra-core
-hydra-joblib-launcher
 albumentations
 sklearn

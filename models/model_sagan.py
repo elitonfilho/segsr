@@ -5,12 +5,13 @@ from torch.nn.functional import interpolate
 from torch.nn.modules.activation import ReLU, Tanh
 from torch.nn.modules.batchnorm import BatchNorm2d
 from torch.nn.modules.container import Sequential
+# from torch.nn import Conv2d
 from torch.nn.modules.conv import Conv2d
 from torch.nn.modules.linear import Linear
 from torch.nn.modules.module import Module
 from torch.nn.modules.pooling import AvgPool2d
 from torch.nn.modules.sparse import Embedding
-from torch.nn.utils import parametrize
+# from torch.nn.utils import parametrize
 from torch.nn.utils.parametrizations import spectral_norm
 
 def init_weights(m):
@@ -61,35 +62,35 @@ class ConditionalBatchNorm2d(nn.Module):
 
     def forward(self, x, y):
         out = self.bn(x)
-        gamma, beta = self.embed(y).permute(0,3,1,2).chunk(2, 1) # CHECK
+        gamma, beta = self.embed(y).permute(0,3,1,2).contiguous().chunk(2, 1) # CHECK
         out = gamma * out + beta
         return out
 
 class GenBlock(nn.Module):
     def __init__(self, in_ch, out_ch, n_class, interpolate=True):
         super().__init__()
-        self.cbn1 = ConditionalBatchNorm2d(in_ch, n_class)
+        # self.cbn1 = ConditionalBatchNorm2d(in_ch, n_class)
         self.interpolate = interpolate
-        # self.cbn1 = BatchNorm2d(in_ch)
+        self.cbn1 = BatchNorm2d(in_ch)
         self.snconv1 = spectral_conv(in_ch,out_ch,3,1,1)
         self.relu = ReLU()
-        self.cbn2 = ConditionalBatchNorm2d(out_ch, n_class)
-        # self.cbn2 = BatchNorm2d(out_ch)
+        # self.cbn2 = ConditionalBatchNorm2d(out_ch, n_class)
+        self.cbn2 = BatchNorm2d(out_ch)
         self.snconv2 = spectral_conv(out_ch,out_ch,3,1,1)
         self.snconv3 = spectral_conv(in_ch,out_ch,1,1)
 
     def forward(self, x, label):
         # Maybe copy??
         _x = x
-        x = self.cbn1(x, label)
-        # x = self.cbn1(x)
+        # x = self.cbn1(x, label)
+        x = self.cbn1(x)
         x = self.relu(x)
         if self.interpolate:
             x = interpolate(x, scale_factor=2)
+            label = interpolate(label.unsqueeze(1).float(), scale_factor=2).squeeze(1).int()
         x = self.snconv1(x)
-        if self.interpolate:
-            x = self.cbn2(x,interpolate(label.unsqueeze(1).float(), scale_factor=2).squeeze(1).int())
-        # x = self.cbn2(x)
+        # x = self.cbn2(x,label)
+        x = self.cbn2(x)
         x = self.relu(x)
         x = self.snconv2(x)
 

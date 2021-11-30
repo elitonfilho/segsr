@@ -33,7 +33,7 @@ class IgniteSaganTrainer(BaseTrainer):
         self.netD: Module = self.models['netD'].cuda().train()
         
         self.netG = idist.auto_model(self.netG)
-        self.netD = idist.auto_model(self.netD)
+        self.netD = idist.auto_model(self.netD, find_unused_parameters=True)
         
         if hasattr(self, 'netSeg'):
             self.netSeg: Module = self.models['netSeg'].cuda().eval()
@@ -45,77 +45,80 @@ class IgniteSaganTrainer(BaseTrainer):
         self.optimizerG = idist.auto_optim(self.optimizerG)
         self.optimizerD = idist.auto_optim(self.optimizerD)
 
-        # for name, loss in self.losses.items():
-        #     setattr(self, f'{name}_loss', loss.cuda())
-
-        self.img_loss = self.losses['il'].cuda()
-        self.adv_loss = self.losses['adv'].cuda()
-        self.per_loss = self.losses['per'].cuda()
-        self.tv_loss = self.losses['tv'].cuda()
-        if 'seg' in self.losses:
-            self.seg_loss = self.losses['seg'].cuda()
+        for name, loss in self.losses.items():
+            setattr(self, f'{name}_loss', loss.cuda())
 
     def train_step(self, engine: Engine, batch: List[Tensor]):
 
         lr_img, hr_img, seg_img, _ = batch
-        noise_mean = torch.full_like(hr_img, 0)
-        noise_std = torch.full_like(hr_img, self.cfg.trainer.std_noise)
-        noise = torch.normal(0, self.cfg.trainer.std_noise, hr_img.shape, device=idist.device(), dtype=torch.float)
+        # noise_mean = torch.full_like(hr_img, 0)
+        # noise_std = torch.full_like(hr_img, self.cfg.trainer.std_noise)
+        # noise = torch.normal(0, self.cfg.trainer.std_noise, hr_img.shape, device=idist.device(), dtype=torch.float)
 
         lr_img = lr_img.cuda().float()
         hr_img = hr_img.cuda().float()
         seg_img = seg_img.cuda().long()
         
-        # self.netG.zero_grad()
-        # self.netG.requires_grad_(True)
-        
+        #====== TRAIN D ========
         self.netD.train()
+        self.netG.eval()
         self.netD.zero_grad()
+        # self.netG.requires_grad_(False)
         # self.netD.requires_grad_(False)
 
-        #====== TRAIN D ========
-
         # Train with fakes
+        fake = self.netG(lr_img, seg_img)
+        # noise = torch.normal(noise_mean, noise_std).to(torch.float).to(idist.device())
 
-        d_out_real = self.netD(hr_img + noise, seg_img)
-        d_loss_fake = self.adv_loss(d_out_real, False, is_disc=True)
+        # d_out_fake = self.netD(fake.detach() + noise, seg_img)
+        d_out_fake = self.netD(fake.detach(), seg_img)
+        d_loss_fake = self.adv_loss(d_out_fake, False, is_disc=True)
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, d_loss_real=d_loss_fake.item())
+        # print('D_fake: ', d_loss_fake)
         d_loss_fake.backward()
 
         # Train with real
-
-        fake = self.netG(lr_img, seg_img)
-        noise = torch.normal(noise_mean, noise_std).to(torch.float).to(idist.device())
-        d_out_fake = self.netD(fake.detach() + noise, seg_img)
-        d_loss_real = self.adv_loss(d_out_fake, True, is_disc=True)
+        d_out_real = self.netD(hr_img, seg_img)
+        # d_out_real = self.netD(hr_img + noise, seg_img)
+        # print('D_real: ', d_loss_real)
+        d_loss_real = self.adv_loss(d_out_real, True, is_disc=True)
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, d_loss_real=d_loss_real.item())
         d_loss_real.backward()
 
         self.optimizerD.step()
 
         # ===== TRAIN G =======
+        self.netG.zero_grad()
+        # self.netG.requires_grad_(True)
 
         self.netD.eval()
         self.netG.train()
-        noise_mean = torch.full_like(lr_img, 0)
-        noise_std = torch.full_like(lr_img, self.cfg.trainer.std_noise)
+        # noise_mean = torch.full_like(lr_img, 0)
+        # noise_std = torch.full_like(lr_img, self.cfg.trainer.std_noise)
 
-        noise = torch.normal(noise_mean, noise_std).to(torch.float).to(idist.device())
-        g_out_fake = self.netG(lr_img + noise, seg_img)
-        g_loss_fake = self.adv_loss(g_out_fake, False, is_disc=False)
-        g_loss_fake.backward()
+        # noise = torch.normal(noise_mean, noise_std).to(torch.float).to(idist.device())
+        g_out_fake = self.netG(lr_img , seg_img)
+        # g_out_fake = self.netG(lr_img + noise, seg_img)
+        l_adv = self.adv_loss(g_out_fake, False, is_disc=False)
+        l_img = self.l1_loss(g_out_fake, hr_img)
+        l_tv = self.tv_loss(g_out_fake, hr_img)
+        l_per = self.per_loss(g_out_fake, hr_img)[0]
+        g_loss = l_img + l_per + l_adv + l_tv
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
+                l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
+        g_loss.backward()
 
         self.optimizerG.step()
 
-        return fake, hr_img
+        return g_out_fake, hr_img
 
     def validate_step(self, engine: Engine, batch: Iterable):
         lr_img, hr_img, seg_img, _ = batch
 
-        self.netG.eval()
-        self.netG.requires_grad_(False)
-
-        hr_img = hr_img.float().cuda()
-        lr_img = lr_img.float().cuda()
-        sr_img = self.netG(lr_img)
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = self.netG(lr_img,seg_img)
         # seg_sr_img = self.netSeg(sr_img)
 
         return sr_img, hr_img
