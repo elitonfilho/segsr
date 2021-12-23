@@ -1,4 +1,3 @@
-# @package _group_  
 train: 
   _target_: dataloaders.CGEODatasetForSegTask
   path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\hr

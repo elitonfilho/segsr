@@ -8,7 +8,6 @@ import models
 import dataloaders
 import losses
 
-@hydra.main()
 def train(cfg: DictConfig) -> None:
     '''
     Trains the model.

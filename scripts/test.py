@@ -6,7 +6,6 @@ import ignite.distributed as idist
 import models
 import dataloaders
 
-@hydra.main()
 def test(cfg: DictConfig) -> None:
     '''
     Tests on data.

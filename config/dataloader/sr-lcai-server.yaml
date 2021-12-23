@@ -1,4 +1,3 @@
-# @package _group_ 
 train: 
   _target_: dataloaders.LandCoverAIDataset
   path_hr: /mnt/data/eliton/datasets/landcoverai/train_hr

@@ -1,4 +1,3 @@
-# @package _group_ 
 train: 
   _target_: dataloaders.CGEODatasetForSegTask
   path_hr: D:\datasets\cgeoNew\train\hr

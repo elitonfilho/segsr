@@ -1,4 +1,3 @@
-# @package _group_
 netG:
   _target_: models.rrdb_arch.RRDBNet
   num_in_ch: 3

@@ -1,4 +1,3 @@
-# @package _group_
 netG:
   _target_: models.model_sagan.Generator
   g_dim: 8

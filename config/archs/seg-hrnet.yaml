@@ -1,4 +1,3 @@
-# @package _group_  
 netSeg:
   _target_: models.model_hrnetv2.HighResolutionNet
   config:

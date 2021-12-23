@@ -1,4 +1,3 @@
-# @package _group_ 
 _target_: trainer.ignite_trainer_seg.IgniteTrainerSeg
 optimizer:
   _target_: torch.optim.Adam

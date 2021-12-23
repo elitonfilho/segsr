@@ -1,4 +1,3 @@
-# @package _group_ 
 train: 
   _target_: dataloaders.LandCoverAIDatasetForSegTask
   path_hr: D:\datasets\landcover.ai\train_hr

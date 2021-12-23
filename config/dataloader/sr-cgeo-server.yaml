@@ -1,4 +1,3 @@
-# @package _group_ 
 train: 
   _target_: dataloaders.CGEODataset
   path_hr: /mnt/data/eliton/datasets/cgeo/train/hr

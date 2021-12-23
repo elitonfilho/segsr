@@ -12,3 +12,5 @@ zoo/
 sheet.py
 .vscode/
 config/*.yaml
+
+.DS_Store
