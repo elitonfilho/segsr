@@ -14,7 +14,6 @@ from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
 from ignite.handlers.param_scheduler import LRScheduler
 from ignite.utils import setup_logger
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
-from numpy import PINF
 import torch
 from torch.nn import Module
 from torch.optim import Optimizer
@@ -151,4 +150,14 @@ class IgniteTrainerSeg(BaseTrainer):
         self.setup_pbar(evaluator)
         self.writer = SummaryWriter('tensorboard')
         trainer.add_event_handler(Events.EPOCH_COMPLETED, self.call_summary_trainer, trainer)
-        trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
+        # trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
+        lr_finder = FastaiLRFinder()
+
+        to_save = {"model": self.netSeg, 'optimizer':self.optimizer}
+        with lr_finder.attach(trainer, to_save) as trainer_with_lr_finder:
+            trainer_with_lr_finder.run(train_loader)
+        lr_finder.plot()
+
+        print("Suggested LR", lr_finder.lr_suggestion())
+
+# To restore the model's and optimizer's states after running the LR Finder

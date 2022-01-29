@@ -1,5 +1,6 @@
 import abc
 import torch
+from torch import nn
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 import logging
 from hydra.utils import instantiate
@@ -15,6 +16,7 @@ class BaseTrainer(abc.ABC):
         self.cfg, self.models, self.losses, self.dataloaders = args
         # self.initialize_distributed()
         self.optimizers = self.setup_optimizers()
+        self.init_weights()
         # self.schedulers = self.setup_schedulers()
         # self.train_metrics, self.val_metrics = self.setup_metrics()
     
@@ -29,6 +31,16 @@ class BaseTrainer(abc.ABC):
     @staticmethod
     def load_state_dict(model, load_path):
         model.load_state_dict(torch.load(load_path))
+
+    def init_weights(self):
+        for model in self.models:
+            for m in model.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight)
+                elif isinstance(m, nn.Linear):
+                    nn.init.kaiming_normal_(m.weight)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
     
     def setup_optimizers(self):
         optimizers = {}
