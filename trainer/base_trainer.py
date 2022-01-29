@@ -16,7 +16,6 @@ class BaseTrainer(abc.ABC):
         self.cfg, self.models, self.losses, self.dataloaders = args
         # self.initialize_distributed()
         self.optimizers = self.setup_optimizers()
-        self.init_weights()
         # self.schedulers = self.setup_schedulers()
         # self.train_metrics, self.val_metrics = self.setup_metrics()
     
@@ -32,8 +31,10 @@ class BaseTrainer(abc.ABC):
     def load_state_dict(model, load_path):
         model.load_state_dict(torch.load(load_path))
 
-    def init_weights(self):
-        for model in self.models:
+    def init_weights(self, to_initialize):
+        if not isinstance(to_initialize, list):
+            to_initialize = iter(to_initialize)
+        for model in to_initialize:
             for m in model.modules():
                 if isinstance(m, nn.Conv2d):
                     nn.init.kaiming_normal_(m.weight)
