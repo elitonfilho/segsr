@@ -36,6 +36,7 @@ class IgniteTrainer(BaseTrainer):
         if 'netSeg' in self.models:
             self.netSeg: Module = self.models['netSeg'].cuda().eval()
             self.netSeg = idist.auto_model(self.netSeg)
+            self.netSeg.requires_grad_(False)
 
         self.optimizerG: Optimizer = self.optimizers['netG']
         self.optimizerD: Optimizer = self.optimizers['netD']
