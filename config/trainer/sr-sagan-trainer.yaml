@@ -2,7 +2,7 @@
 _target_: trainer.ignite_sagan_trainer.IgniteSaganTrainer
 optimizer:
   _target_: torch.optim.Adam
-  lr: 1e-4
+  lr: 1e-3
 std_noise: 1
 num_epochs: 200
 batch_size: 9
@@ -21,7 +21,7 @@ losses:
     perceptual_weight: 0.01
   tv:
     _target_: losses.WeightedTVLoss
-    loss_weight: 0.01
+    loss_weight: 0.001
 validation:
   batch_size: 9
   save_best: 'psnr'

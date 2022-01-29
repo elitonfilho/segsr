@@ -6,3 +6,16 @@ python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=se
 python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=segsr-trainer trainer.num_epochs=50 archs=segsr-hrnet trainer.path_pretrained_seg='zoo/pretrained-hrnet.pt' trainer.path_pretrained_sr='zoo/pretrained-sr.pt' trainer.batch_size=14 trainer.validation.batch_size=14
 # SWEEP TRAIN LCAI HRNET
 python3 main.py -m trainer.losses.seg.loss_weight=5e-4,1e-3,5e-3,1e-2 trainer=segsr-trainer dataloader=sr-lcai-server trainer.num_epochs=50 archs=segsr-hrnet trainer.path_pretrained_seg='zoo/new-pretrained-seg-hrnet-lcai.pt' trainer.path_pretrained_sr='zoo/new-pretrained-sr-lcai.pt' trainer.batch_size=14 trainer.validation.batch_size=14
+
+# SWEEP TRAIN CGEO SAGAN
+python3 main.py -m archs=sr-sagan trainer=sr-sagan-trainer dataloader=sr-cgeo-server trainer.num_epochs=50 trainer.losses.l1.loss_weight=0.1,0.01,0.001 trainer.losses.adv.loss_weight=0.1,0.01,0.001 trainer.losses.per.perceptual_weight=0.1,0.01,0.001
+# SWEEP TRAIN LCAI SAGAN
+python3 main.py -m archs=sr-sagan trainer=sr-sagan-trainer dataloader=sr-lcai-server trainer.num_epochs=50 trainer.losses.l1.loss_weight=0.1,0.01,0.001 trainer.losses.adv.loss_weight=0.1,0.01,0.001 trainer.losses.per.perceptual_weight=0.1,0.01,0.001
+
+# SWEEP TRAIN CGEO SAGAN UNET
+# SWEEP TRAIN CGEO SAGAN HRNET
+# SWEEP TRAIN LCAI SAGAN UNET
+# SWEEP TRAIN LCAI SAGAN HRNET
+# TEST SAGAN
+python3 main.py mode=test tester=sr-tester archs=sr-sagan tester.path_pretrained="/mnt/data/eliton/results/sweep-sagan-cgeo/4/checkpoints/sr_checkpoint_50_psnr\=28.8029.pt" tester.save_path="/mnt/data/eliton/results/test" tester.savefig_mode=sronly gpus=[0]
+

@@ -73,7 +73,7 @@ class IgniteTester(BaseTester):
 
     def run_test(self, engine: Engine, batch: List[Tensor]):
         img_lr, img_hr, label_hr, name = batch
-        result = self.netG(img_lr.float().cuda())
+        result = self.netG(img_lr.float().cuda(), label_hr)
         scaled_lr = torch.nn.functional.interpolate(img_lr, (256,256), mode='bicubic')
         if self.cfg.tester.get('savefig_mode', None) == 'matplotlib':
             self.generate_plot(name, img_hr, result, scaled_lr, label_hr)
