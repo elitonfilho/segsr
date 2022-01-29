@@ -1,4 +1,3 @@
-# @package _group_
 netSeg:
   _target_: models.model_unet.UNet
   n_class: ${dataloader.n_classes}

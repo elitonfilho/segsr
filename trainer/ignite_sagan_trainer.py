@@ -38,6 +38,7 @@ class IgniteSaganTrainer(BaseTrainer):
         if hasattr(self, 'netSeg'):
             self.netSeg: Module = self.models['netSeg'].cuda().eval()
             self.netSeg = idist.auto_model(self.netSeg)
+            self.netSeg.requires_grad_(False)
 
         self.optimizerG: Optimizer = self.optimizers['netG']
         self.optimizerD: Optimizer = self.optimizers['netD']
@@ -103,9 +104,16 @@ class IgniteSaganTrainer(BaseTrainer):
         l_img = self.l1_loss(g_out_fake, hr_img)
         l_tv = self.tv_loss(g_out_fake, hr_img)
         l_per = self.per_loss(g_out_fake, hr_img)[0]
-        g_loss = l_img + l_per + l_adv + l_tv
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
-                l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
+        if hasattr(self, 'netSeg'):
+            label_pred = self.netSeg(g_out_fake)
+            l_seg = self.seg_loss(label_pred, seg_img)
+            g_loss = l_img + l_per + l_adv + l_tv + l_seg
+            self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
+                    l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item(), l_seg=l_seg.item())
+        else:
+            g_loss = l_img + l_per + l_adv + l_tv
+            self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
+                    l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
         g_loss.backward()
 
         self.optimizerG.step()
