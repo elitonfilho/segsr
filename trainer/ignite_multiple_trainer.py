@@ -1,3 +1,4 @@
+from pickletools import optimize
 from typing import Callable, Iterable, List, Tuple
 from xml.parsers.expat import model
 
@@ -35,7 +36,7 @@ class IgniteMultipleTrainer(BaseTrainer):
         # Adapt optimizer for distributed scenario
         for model_name, optim in self.optimizers.items():
             optim = idist.auto_optim(optim)
-            setattr(self, f'optimizer{model_name[-1]}')
+            setattr(self, f'optim{model_name[-1]}')
 
         # Setting up losses
         for loss_name, loss in self.losses.items():
@@ -69,17 +70,9 @@ class IgniteMultipleTrainer(BaseTrainer):
         l_g_fake = self.adv_loss(d_fake - torch.mean(d_real), True, is_disc=False)
         l_adv = (l_g_real + l_g_fake)/2
 
-        
-        if hasattr(self, 'netSeg'):
-            label_pred = self.netSeg(fake_img)
-            l_seg = self.seg_loss(label_pred, seg_img)
-            g_loss = l_img + l_per + l_adv + l_tv + l_seg
-            self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
-                l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item(), l_seg=l_seg.item())
-        else:
-            g_loss = l_img + l_per + l_adv + l_tv
-            self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
-                l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
+        g_loss = l_img + l_per + l_adv + l_tv
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
+            l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
 
         g_loss.backward()
 
@@ -117,6 +110,39 @@ class IgniteMultipleTrainer(BaseTrainer):
         lr_img = lr_img.float().cuda()
         sr_img = self.netG(lr_img)
         # seg_sr_img = self.netSeg(sr_img)
+
+        return sr_img, hr_img
+
+    def train_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
+        lr_img, hr_img, _, _ = batch
+
+        lr_img = lr_img.cuda().float()
+        hr_img = hr_img.cuda().float()
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+        fake_img = netG(lr_img)
+
+        loss = torch.tensor(0, device=idist.device())
+        for loss_name in self.losses:
+            loss_fn = getattr(self, loss_name)
+            loss += loss_fn(fake_img, hr_img)
+
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
+        loss.backward()
+        
+        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
+        optimizer.step()
+
+        return fake_img, hr_img
+
+    def validade_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
+        lr_img, hr_img, _, _ = batch
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+
+        hr_img = hr_img.float().cuda()
+        lr_img = lr_img.float().cuda()
+        sr_img = netG(lr_img)
 
         return sr_img, hr_img
 
