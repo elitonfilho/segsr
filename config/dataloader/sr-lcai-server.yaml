@@ -1,5 +1,6 @@
 train: 
   _target_: dataloaders.LandCoverAIDataset
+  _recursive_: False
   path_hr: /mnt/data/eliton/datasets/landcoverai/train_hr
   path_lr: /mnt/data/eliton/datasets/landcoverai/train_lr
   path_seg: /mnt/data/eliton/datasets/landcoverai/train_mask

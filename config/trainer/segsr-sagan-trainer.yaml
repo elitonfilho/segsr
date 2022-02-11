@@ -4,8 +4,10 @@ optimizer:
   _target_: torch.optim.Adam
   lr: 1e-3
 std_noise: 1
-num_epochs: 200
+num_epochs: 100
 batch_size: 9
+path_pretrained_seg: '/mnt/data/eliton/results/zoo/pretrained-unet.pt'
+path_pretrained_sr: '/mnt/data/eliton/results/zoo/pretrained-sr-sagan.pt'
 save_path: checkpoints/
 losses:
   l1:
@@ -22,12 +24,16 @@ losses:
   tv:
     _target_: losses.WeightedTVLoss
     loss_weight: 0.001
+  seg:
+    _target_: losses.SegLoss
+    loss_weight: 1.0
+    weight_classes: ${dataloader.weight_classes}
 validation:
   batch_size: 9
   save_best: 'psnr'
   visualize: True
   freq: 5
-  n_saved: 2
+  n_saved: 1
 metrics:
   train:
     psnr:

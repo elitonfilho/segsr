@@ -1,5 +1,6 @@
 train: 
   _target_: dataloaders.LandCoverAIDatasetForSegTask
+  _recursive_: False
   path_hr: D:\datasets\landcover.ai\train_hr
   path_seg: D:\datasets\landcover.ai\train_mask
   augCfg:

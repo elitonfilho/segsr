@@ -1,5 +1,6 @@
 train: 
   _target_: dataloaders.CGEODatasetForSegTask
+  _recursive_: False
   path_hr: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\hr
   path_seg: C:\Users\Eliton\Documents\master\segsr\data\v1\cgeoNew\train\seg
   augCfg:

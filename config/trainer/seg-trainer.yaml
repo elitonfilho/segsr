@@ -1,4 +1,5 @@
 _target_: trainer.ignite_trainer_seg.IgniteTrainerSeg
+_recursive_: False
 optimizer:
   _target_: torch.optim.Adam
   lr: 1e-3

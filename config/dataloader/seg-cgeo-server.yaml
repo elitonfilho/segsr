@@ -1,5 +1,6 @@
 train: 
   _target_: dataloaders.CGEODatasetForSegTask
+  _recursive_: False
   path_hr: /mnt/data/eliton/datasets/cgeo/train/hr
   path_seg: /mnt/data/eliton/datasets/cgeo/train/seg
   augCfg:

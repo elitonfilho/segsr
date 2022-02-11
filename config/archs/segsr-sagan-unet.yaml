@@ -1,0 +1,11 @@
+netG:
+  _target_: models.model_sagan.Generator
+  g_dim: 8
+  n_class: ${dataloader.n_classes}
+netD:
+  _target_: models.model_sagan.Discriminator
+  d_dim: 4
+  n_class: ${dataloader.n_classes}
+netSeg:
+  _target_: models.model_unet.UNet
+  n_class: ${dataloader.n_classes}

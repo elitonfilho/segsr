@@ -13,9 +13,11 @@ python3 main.py -m archs=sr-sagan trainer=sr-sagan-trainer dataloader=sr-cgeo-se
 python3 main.py -m archs=sr-sagan trainer=sr-sagan-trainer dataloader=sr-lcai-server trainer.num_epochs=50 trainer.losses.l1.loss_weight=0.1,0.01,0.001 trainer.losses.adv.loss_weight=0.1,0.01,0.001 trainer.losses.per.perceptual_weight=0.1,0.01,0.001
 
 # SWEEP TRAIN CGEO SAGAN UNET
+python3 main.py -m trainer=segsr-sagan-trainer archs=segsr-sagan-unet trainer.losses.seg.loss_weight=0.1,0.01,0.001
 # SWEEP TRAIN CGEO SAGAN HRNET
 # SWEEP TRAIN LCAI SAGAN UNET
 # SWEEP TRAIN LCAI SAGAN HRNET
+main.py -m name=segsr-sagan-hrnet-lcai dataloader=sr-lcai-server trainer=segsr-sagan-trainer archs=segsr-sagan-hrnet trainer.losses.seg.loss_weight=0.1,0.01,0.001 trainer.path_pretrained_seg='/mnt/data/eliton/results/zoo/pretrained-hrnet-lcai.pt' trainer.path_pretrained_sr='/mnt/data/eliton/results/zoo/pretrained-sr-lcai.pt' trainer.num_epochs=50
 # TEST SAGAN
 python3 main.py mode=test tester=sr-tester archs=sr-sagan tester.path_pretrained="/mnt/data/eliton/results/sweep-sagan-cgeo/4/checkpoints/sr_checkpoint_50_psnr\=28.8029.pt" tester.save_path="/mnt/data/eliton/results/test" tester.savefig_mode=sronly gpus=[0]
 

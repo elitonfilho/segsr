@@ -140,12 +140,17 @@ class CGEODatasetOld(Dataset):
 
 def debug():
     train_set = CGEODatasetForSegTask(
-        '/mnt/data/eliton/datasets/cgeo/test/hr',
-        '/mnt/data/eliton/datasets/cgeo/test/seg'
+        '/mnt/data/eliton/datasets/cgeo/train/hr',
+        '/mnt/data/eliton/datasets/cgeo/train/seg'
         )
 
+    img1, _, _ = train_set[0]
+    imgs = []
     for i in train_set:
-        print(torch.max(i[1]), torch.min(i[1]))
+        imgs.append(i[0].unsqueeze(0))
+    img = torch.concat(imgs, 0)
+    print(img.shape)
+    print(torch.mean(img, [0,2,3]))
 
 if __name__ == "__main__":
     debug()

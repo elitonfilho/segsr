@@ -1,0 +1,8 @@
+netG:
+  _target_: models.model_edsr.EDSR
+  num_in_ch: 3
+  num_out_ch: 3
+  num_feat: 64
+  num_block: 16
+  upscale: 4
+  rgb_mean: [0.3151, 0.3444, 0.3060]

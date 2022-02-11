@@ -21,7 +21,7 @@ from torch.optim import Optimizer
 from torch.utils.data.dataloader import Dataset
 
 from .base_trainer import BaseTrainer
-# from tensorboardX import SummaryWriter
+from tensorboardX import SummaryWriter
 
 
 class IgniteMultipleTrainer(BaseTrainer):
@@ -36,12 +36,12 @@ class IgniteMultipleTrainer(BaseTrainer):
         # Adapt optimizer for distributed scenario
         for model_name, optim in self.optimizers.items():
             optim = idist.auto_optim(optim)
-            setattr(self, f'optim{model_name[-1]}')
+            setattr(self, f'optim{model_name[-1]}', optim)
 
         # Setting up losses
         for loss_name, loss in self.losses.items():
             loss = loss.cuda()
-            setattr(self, loss_name)
+            setattr(self, loss_name, loss)
 
     def train_step(self, engine: Engine, batch: List[Tensor]):
 
@@ -122,11 +122,10 @@ class IgniteMultipleTrainer(BaseTrainer):
         netG : torch.nn.Module = getattr(self, 'netG')
         fake_img = netG(lr_img)
 
-        loss = torch.tensor(0, device=idist.device())
+        loss = torch.tensor(0, device=idist.device(), dtype=torch.float)
         for loss_name in self.losses:
             loss_fn = getattr(self, loss_name)
             loss += loss_fn(fake_img, hr_img)
-
         self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
         loss.backward()
         
@@ -135,7 +134,7 @@ class IgniteMultipleTrainer(BaseTrainer):
 
         return fake_img, hr_img
 
-    def validade_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
+    def validation_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
         lr_img, hr_img, _, _ = batch
 
         netG : torch.nn.Module = getattr(self, 'netG')
@@ -181,10 +180,12 @@ class IgniteMultipleTrainer(BaseTrainer):
         pbar = ProgressBar()
         pbar.attach(engine)
 
-    def setup_schedulers(self, engine: Engine, optimizer: Optimizer):
-        _instance = instantiate(self.cfg.trainer.get('scheduler'), optimizer=optimizer)
-        _wrapped_instance = LRScheduler(_instance)
-        engine.add_event_handler(Events.ITERATION_COMPLETED, _wrapped_instance)
+    def setup_schedulers(self, engine: Engine):
+        for model_name in self.optimizers:
+            optim = getattr(self, f'optim{model_name[-1]}')
+            _instance = instantiate(self.cfg.trainer.get('scheduler'), optimizer=optim)
+            _wrapped_instance = LRScheduler(_instance)
+            engine.add_event_handler(Events.ITERATION_COMPLETED, _wrapped_instance)
 
     @staticmethod
     @one_rank_only()
@@ -193,7 +194,9 @@ class IgniteMultipleTrainer(BaseTrainer):
         writer.add_scalars(tag, results, globalstep)
 
     def get_run_step_fn(self, name: str) -> Tuple[Callable]:
-        pass
+        train_func = getattr(self, f'train_step_{name}')
+        val_func = getattr(self, f'validation_step_{name}')
+        return train_func, val_func
 
     def fit(self):
         # torch.autograd.set_detect_anomaly(True)
@@ -201,7 +204,7 @@ class IgniteMultipleTrainer(BaseTrainer):
         val_dataset: Dataset = self.dataloaders['val']
         train_loader = idist.auto_dataloader(train_dataset, batch_size=self.cfg.trainer.batch_size, drop_last=True)
         val_loader = idist.auto_dataloader(val_dataset, batch_size=self.cfg.trainer.validation.batch_size, drop_last=True)
-        train_step, validate_step = self.get_run_step_fn(self.cfg.archs.name)
+        train_step, validate_step = self.get_run_step_fn(self.cfg.trainer.model_name)
         trainer = Engine(train_step)
         trainer.logger = setup_logger('trainer')
         validator = Engine(validate_step)
@@ -216,7 +219,6 @@ class IgniteMultipleTrainer(BaseTrainer):
         self.setup_save_state(validator, trainer)
         self.setup_pbar(trainer)
         self.setup_pbar(validator)
-        self.setup_schedulers(trainer, self.optimizerG)
-        self.setup_schedulers(trainer, self.optimizerD)
+        self.setup_schedulers(trainer)
         self.writer = SummaryWriter('tensorboard')
         trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)

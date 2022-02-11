@@ -35,7 +35,7 @@ class IgniteSaganTrainer(BaseTrainer):
         self.netG = idist.auto_model(self.netG)
         self.netD = idist.auto_model(self.netD, find_unused_parameters=True)
         
-        if hasattr(self, 'netSeg'):
+        if 'netSeg' in self.models:
             self.netSeg: Module = self.models['netSeg'].cuda().eval()
             self.netSeg = idist.auto_model(self.netSeg)
             self.netSeg.requires_grad_(False)

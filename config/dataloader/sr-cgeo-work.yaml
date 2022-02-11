@@ -1,5 +1,6 @@
 train: 
   _target_: dataloaders.CGEODataset
+  _recursive_: False
   path_hr: D:\datasets\cgeoNew\train\hr
   path_seg: D:\datasets\cgeoNew\train\seg
   augCfg:
