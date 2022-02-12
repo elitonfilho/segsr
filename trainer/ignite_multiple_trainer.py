@@ -1,27 +1,25 @@
-from pickletools import optimize
 from typing import Callable, Iterable, List, Tuple
-from xml.parsers.expat import model
 
 import ignite
 import ignite.distributed as idist
-from ignite.distributed import one_rank_only
 import torch
 from hydra.utils import instantiate
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
-from ignite.handlers.terminate_on_nan import TerminateOnNan
+from ignite.distributed import one_rank_only
 from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.handlers import Checkpoint, DiskSaver, global_step_from_engine
 from ignite.handlers.param_scheduler import LRScheduler
+from ignite.handlers.terminate_on_nan import TerminateOnNan
 from ignite.metrics import Metric
 from ignite.utils import setup_logger
+from tensorboardX import SummaryWriter
 from torch.functional import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data.dataloader import Dataset
 
 from .base_trainer import BaseTrainer
-from tensorboardX import SummaryWriter
 
 
 class IgniteMultipleTrainer(BaseTrainer):
@@ -135,6 +133,38 @@ class IgniteMultipleTrainer(BaseTrainer):
         return fake_img, hr_img
 
     def validation_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
+        lr_img, hr_img, _, _ = batch
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+
+        hr_img = hr_img.float().cuda()
+        lr_img = lr_img.float().cuda()
+        sr_img = netG(lr_img)
+
+        return sr_img, hr_img
+
+    def train_step_rcan(self, engine: Engine, batch: Iterable[Tensor]):
+        lr_img, hr_img, _, _ = batch
+
+        lr_img = lr_img.cuda().float()
+        hr_img = hr_img.cuda().float()
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+        fake_img = netG(lr_img)
+
+        loss = torch.tensor(0, device=idist.device(), dtype=torch.float)
+        for loss_name in self.losses:
+            loss_fn = getattr(self, loss_name)
+            loss += loss_fn(fake_img, hr_img)
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
+        loss.backward()
+        
+        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
+        optimizer.step()
+
+        return fake_img, hr_img
+
+    def validation_step_rcan(self, engine: Engine, batch: Iterable[Tensor]):
         lr_img, hr_img, _, _ = batch
 
         netG : torch.nn.Module = getattr(self, 'netG')
