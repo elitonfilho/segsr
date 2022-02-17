@@ -1,0 +1,7 @@
+netG:
+  _target_: models.model_dpbn.DBPN
+  num_channels: 3
+  base_channels: 18
+  feat_channels: 64
+  num_stages: 4
+  scale_factor: 4

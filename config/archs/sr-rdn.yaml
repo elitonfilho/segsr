@@ -1,0 +1,8 @@
+netG:
+  _target_: models.model_rdn.RDN
+  in_ch: 3
+  num_feat: 64
+  num_blocks: 16
+  num_conv: 8
+  num_channels: 64
+  kernel_size: 3

@@ -1,0 +1,11 @@
+netG:
+  _target_: models.model_paedsr.PAEDSR
+  in_ch: 3
+  num_feat: 
+  n_resblock: 
+  res_scale: 
+  kernel_size: 3
+  scale: 4
+  rgb_range: 
+  rgb_mean: 
+  rgb_std: 
