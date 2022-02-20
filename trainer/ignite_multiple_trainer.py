@@ -232,6 +232,21 @@ class IgniteMultipleTrainer(BaseTrainer):
     def validation_step_paedsr(self, engine: Engine, batch: Iterable[Tensor]):
         pass
 
+    def train_step_abpn(self, engine: Engine, batch: Iterable[Tensor]):
+        pass
+    def validation_step_abpn(self, engine: Engine, batch: Iterable[Tensor]):
+        pass
+
+    def train_step_csnln(self, engine: Engine, batch: Iterable[Tensor]):
+        pass
+    def validation_step_csnln(self, engine: Engine, batch: Iterable[Tensor]):
+        pass
+
+    def train_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
+        pass
+    def validation_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
+        pass
+
     def run_validation(self, engine: Engine, data: Iterable, engineRef: Engine):
         status = engine.run(data)
         self.call_summary(self.writer, 'val/metrics', engineRef.state.epoch, **status.metrics )

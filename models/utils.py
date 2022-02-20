@@ -153,6 +153,23 @@ class BasicBlock(nn.Sequential):
 
         return res
 
+class BasicBlockSig(nn.Module):
+    def __init__(self,
+                 in_channels, out_channels,
+                 ksize=3, stride=1, pad=1):
+        super(BasicBlockSig, self).__init__()
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, ksize, stride, pad),
+            nn.Sigmoid()
+        )
+
+        init_weights(self.modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
+
 def same_padding(images, ksizes, strides, rates):
     assert len(images.size()) == 4
     batch_size, channel, rows, cols = images.size()

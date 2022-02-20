@@ -1,0 +1,8 @@
+netG:
+  _target_: models.model_csnln.CSNLN
+  n_feats: 128
+  depth: 12
+  kernel_size: 3
+  scale: 4
+  rgb_mean: 
+  rgb_std: [1.0, 1.0, 1.0]
