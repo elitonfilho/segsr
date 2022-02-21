@@ -1,0 +1,2 @@
+netG:
+  _target_: models.model_srresnet.NetG
