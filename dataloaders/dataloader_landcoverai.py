@@ -85,3 +85,21 @@ class LandCoverAIDatasetForSegTask(Dataset):
             hr_image = ToTensor()(hr_image)
             seg_image = torch.tensor(np.array(seg_image, dtype=np.int32))
         return hr_image, seg_image, self.hr_images[index].stem
+
+    
+def debug():
+    train_set = LandCoverAIDatasetForSegTask(
+        '/mnt/data/eliton/datasets/landcoverai/train_hr',
+        '/mnt/data/eliton/datasets/landcoverai/train_mask'
+        )
+
+    img1, _, _ = train_set[0]
+    imgs = []
+    for i in train_set:
+        imgs.append(i[0].unsqueeze(0))
+    img = torch.concat(imgs, 0)
+    print(img.shape)
+    print(torch.mean(img, [0,2,3]))
+
+if __name__ == "__main__":
+    debug()

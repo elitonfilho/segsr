@@ -3,17 +3,17 @@ _recursive_: False
 model_name: 
 optimizer:
   _target_: torch.optim.Adam
-  lr: 1e-3
+  lr: 1e-4
 begin_seg: 0.
-num_epochs: 45
-batch_size: 48
+num_epochs: 100
+batch_size: 128
 save_path: checkpoints/
 losses:
   il:
     _target_: losses.L1Loss
-    loss_weight: 0.1
+    loss_weight: 1.0
 validation:
-  batch_size: 24
+  batch_size: 128
   save_best: 'psnr'
   visualize: False
   freq: 5

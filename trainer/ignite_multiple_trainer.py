@@ -323,7 +323,7 @@ class IgniteMultipleTrainer(BaseTrainer):
         trainer.add_event_handler(
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
             self.run_validation, validator, val_loader, trainer)
-        trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
+#         trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
         self.setup_save_state(validator, trainer)
         self.setup_pbar(trainer)
         self.setup_pbar(validator)
