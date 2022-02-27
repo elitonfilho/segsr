@@ -166,7 +166,7 @@ class IgniteMultipleTrainer(BaseTrainer):
         writer.add_scalars(tag, results, globalstep)
 
     def get_run_step_fn(self, name: str) -> Tuple[Callable,Callable]:
-        if name in ('edsr', 'rcan', 'rdn', 'dbpn', 'csnln'):
+        if name in ('edsr', 'rcan', 'rdn', 'dbpn', 'csnln', 'srresnet'):
             train_func = self.train_step
             val_func = self.validate_step
         else:
