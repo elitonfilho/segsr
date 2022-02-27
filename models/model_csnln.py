@@ -2,7 +2,7 @@
 # https://arxiv.org/abs/2006.01424
 # https://github.com/SHI-Labs/Cross-Scale-Non-Local-Attention
 
-from .utils import ResidualBlockBN, BasicBlock, MeanShift, extract_image_patches, reduce_sum, same_padding
+from .utils import ResidualBlockNoBN, BasicBlock, MeanShift, extract_image_patches, reduce_sum, same_padding
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -19,7 +19,7 @@ class MultisourceProjection(nn.Module):
         self.up_attention = CrossScaleAttention(scale = up_factor)
         self.down_attention = NonLocalAttention()
         self.upsample = nn.Sequential(*[nn.ConvTranspose2d(in_channel,in_channel,deconv_ksize,stride=stride,padding=padding),nn.PReLU()])
-        self.encoder = ResidualBlockBN(in_channel, kernel_size, act=nn.PReLU(), res_scale=1)
+        self.encoder = ResidualBlockNoBN(in_channel)
     
     def forward(self,x):
         down_map = self.upsample(self.down_attention(x))
@@ -46,7 +46,7 @@ class RecurrentProjection(nn.Module):
         if scale != 4:
             self.down_sample_2 = nn.Sequential(*[nn.Conv2d(in_channel,in_channel,stride_conv_ksize,stride=stride,padding=padding),nn.PReLU()])
         self.error_encode = nn.Sequential(*[nn.ConvTranspose2d(in_channel,in_channel,stride_conv_ksize,stride=stride,padding=padding),nn.PReLU()])
-        self.post_conv = BasicBlock(in_channel,in_channel,kernel_size,stride=1,bias=True,act=nn.PReLU())
+        self.post_conv = BasicBlock(in_channel,in_channel,kernel_size,stride=1,act=nn.PReLU())
         if scale == 4:
             self.multi_source_projection_2 = MultisourceProjection(in_channel,kernel_size=kernel_size,scale = scale)
             self.down_sample_3 = nn.Sequential(*[nn.Conv2d(in_channel,in_channel,8,stride=4,padding=2),nn.PReLU()])

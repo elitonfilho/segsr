@@ -42,184 +42,24 @@ class IgniteMultipleTrainer(BaseTrainer):
             setattr(self, loss_name, loss)
 
     def train_step(self, engine: Engine, batch: List[Tensor]):
-
-        lr_img, hr_img, seg_img, _ = batch
+        lr_img, hr_img, _, _ = batch
 
         lr_img = lr_img.cuda().float()
         hr_img = hr_img.cuda().float()
-        seg_img = seg_img.cuda().long()
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+        fake_img = netG(lr_img)
+
+        loss: torch.Tensor = self.il(fake_img, hr_img)
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
+        loss.backward()
         
-        self.netG.zero_grad()
-        self.netG.requires_grad_(True)
-        
-        self.netD.eval()
-        self.netD.requires_grad_(False)
-
-        fake_img = self.netG(lr_img)
-        
-        d_fake = self.netD(fake_img.clone().detach())
-        d_real = self.netD(hr_img).detach()
-
-        l_img = self.img_loss(fake_img, hr_img)
-        l_per = self.per_loss(fake_img, hr_img)[0]
-        l_tv = self.tv_loss(fake_img, hr_img)
-        # l_adv = adv_loss(d_fake, True, is_disc=False)
-        l_g_real = self.adv_loss(d_real - torch.mean(d_fake), False, is_disc=False)
-        l_g_fake = self.adv_loss(d_fake - torch.mean(d_real), True, is_disc=False)
-        l_adv = (l_g_real + l_g_fake)/2
-
-        g_loss = l_img + l_per + l_adv + l_tv
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, \
-            l_img=l_img.item(), l_per=l_per.item(), l_adv=l_adv.item(), l_tv=l_tv.item())
-
-        g_loss.backward()
-
-        self.optimizerG.step()
-
-        self.netD.train()
-        self.netD.requires_grad_(True)
-        self.netD.zero_grad()
-        
-        fake_img = self.netG(lr_img)
-        
-        d_fake = self.netD(fake_img).detach()
-        d_real = self.netD(hr_img)
-        l_d_real = self.adv_loss(d_real - torch.mean(d_fake), True, is_disc=True) * 0.5
-        l_d_real.backward()
-        d_fake = self.netD(fake_img.detach())
-        l_d_fake = self.adv_loss(d_fake - torch.mean(d_real.detach()), False, is_disc=True) * 0.5
-        l_d_fake.backward()
-
-        self.optimizerD.step()
-
-        fake_img = self.netG(lr_img)
-        # d_fake = self.netD(fake_img).mean()
-        # d_real = self.netD(hr_img).mean()
+        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
+        optimizer.step()
 
         return fake_img, hr_img
 
     def validate_step(self, engine: Engine, batch: Iterable):
-        lr_img, hr_img, seg_img, _ = batch
-
-        self.netG.eval()
-        self.netG.requires_grad_(False)
-
-        hr_img = hr_img.float().cuda()
-        lr_img = lr_img.float().cuda()
-        sr_img = self.netG(lr_img)
-        # seg_sr_img = self.netSeg(sr_img)
-
-        return sr_img, hr_img
-
-    def train_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        lr_img = lr_img.cuda().float()
-        hr_img = hr_img.cuda().float()
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-        fake_img = netG(lr_img)
-
-        loss : torch.Tensor = self.il(fake_img, hr_img)
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
-        loss.backward()
-        
-        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
-        optimizer.step()
-
-        return fake_img, hr_img
-
-    def validation_step_edsr(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-
-        with torch.no_grad():
-            hr_img = hr_img.float().cuda()
-            lr_img = lr_img.float().cuda()
-            sr_img = netG(lr_img)
-
-        return sr_img, hr_img
-
-    def train_step_rcan(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        lr_img = lr_img.cuda().float()
-        hr_img = hr_img.cuda().float()
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-        fake_img = netG(lr_img)
-
-        loss: torch.Tensor = self.il(fake_img, hr_img)
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
-        loss.backward()
-        
-        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
-        optimizer.step()
-
-        return fake_img, hr_img
-
-    def validation_step_rcan(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-
-        with torch.no_grad():
-            hr_img = hr_img.float().cuda()
-            lr_img = lr_img.float().cuda()
-            sr_img = netG(lr_img)
-
-        return sr_img, hr_img
-
-    def train_step_rdn(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        lr_img = lr_img.cuda().float()
-        hr_img = hr_img.cuda().float()
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-        fake_img = netG(lr_img)
-
-        loss: torch.Tensor = self.il(fake_img, hr_img)
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
-        loss.backward()
-        
-        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
-        optimizer.step()
-
-        return fake_img, hr_img
-
-    def validation_step_rdn(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-
-        with torch.no_grad():
-            hr_img = hr_img.float().cuda()
-            lr_img = lr_img.float().cuda()
-            sr_img = netG(lr_img)
-
-        return sr_img, hr_img
-
-    def train_step_dbpn(self, engine: Engine, batch: Iterable[Tensor]):
-        lr_img, hr_img, _, _ = batch
-
-        lr_img = lr_img.cuda().float()
-        hr_img = hr_img.cuda().float()
-
-        netG : torch.nn.Module = getattr(self, 'netG')
-        fake_img = netG(lr_img)
-
-        loss: torch.Tensor = self.il(fake_img, hr_img)
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
-        loss.backward()
-        
-        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
-        optimizer.step()
-
-        return fake_img, hr_img
-
-    def validation_step_dbpn(self, engine: Engine, batch: Iterable[Tensor]):
         lr_img, hr_img, _, _ = batch
 
         netG : torch.nn.Module = getattr(self, 'netG')
@@ -239,11 +79,6 @@ class IgniteMultipleTrainer(BaseTrainer):
     def train_step_abpn(self, engine: Engine, batch: Iterable[Tensor]):
         pass
     def validation_step_abpn(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
-
-    def train_step_csnln(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
-    def validation_step_csnln(self, engine: Engine, batch: Iterable[Tensor]):
         pass
 
     def train_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
@@ -331,8 +166,12 @@ class IgniteMultipleTrainer(BaseTrainer):
         writer.add_scalars(tag, results, globalstep)
 
     def get_run_step_fn(self, name: str) -> Tuple[Callable,Callable]:
-        train_func = getattr(self, f'train_step_{name}')
-        val_func = getattr(self, f'validation_step_{name}')
+        if name in ('edsr', 'rcan', 'rdn', 'dbpn', 'csnln'):
+            train_func = self.train_step
+            val_func = self.validate_step
+        else:
+            train_func = getattr(self, f'train_step_{name}')
+            val_func = getattr(self, f'validation_step_{name}')
         return train_func, val_func
 
     def fit(self):

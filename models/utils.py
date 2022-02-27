@@ -147,12 +147,6 @@ class BasicBlock(nn.Sequential):
 
         super(BasicBlock, self).__init__(*m)
 
-    def forward(self, x):
-        res = self.body(x)
-        res += x
-
-        return res
-
 def same_padding(images, ksizes, strides, rates):
     assert len(images.size()) == 4
     batch_size, channel, rows, cols = images.size()

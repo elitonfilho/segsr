@@ -5,4 +5,4 @@ netG:
   kernel_size: 3
   scale: 4
   rgb_mean: ${dataloader.rgb_mean}
-  rgb_std: 
+  rgb_std: [0,0,0]
