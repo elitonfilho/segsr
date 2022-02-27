@@ -784,3 +784,9 @@ class Space_Time_Attention_v2(torch.nn.Module):
         y1 = self.resblock_y1(y1)
 
         return x1, y1
+
+if __name__ == '__main__':
+    import torch
+    model = ABPN_v3(3, 32).cuda()
+    t = torch.ones(1,3,128,128).cuda()
+    print(model(t).shape)

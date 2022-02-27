@@ -4,5 +4,5 @@ netG:
   depth: 12
   kernel_size: 3
   scale: 4
-  rgb_mean: 
-  rgb_std: [1.0, 1.0, 1.0]
+  rgb_mean: ${dataloader.rgb_mean}
+  rgb_std: 

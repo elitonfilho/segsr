@@ -4,7 +4,7 @@
 
 import torch
 import torch.nn as nn
-from .utils import BasicBlock, ResidualBlockBN, MeanShift, BasicBlockSig, Upsample
+from .utils import ResidualBlockBN, MeanShift, Upsample
 
 class CALayer(nn.Module):
     def __init__(self, channel, reduction=16):
@@ -25,6 +25,36 @@ class CALayer(nn.Module):
         c_out = torch.cat([c1, c2, c3], dim=1)
         y = self.c4(c_out)
         return x * y
+
+class BasicBlock(nn.Module):
+    def __init__(self,
+                 in_channels, out_channels,
+                 ksize=3, stride=1, pad=1, dilation=1):
+        super(BasicBlock, self).__init__()
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, ksize, stride, pad, dilation),
+            nn.ReLU(inplace=True)
+        )
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
+
+class BasicBlockSig(nn.Module):
+    def __init__(self,
+                 in_channels, out_channels,
+                 ksize=3, stride=1, pad=1):
+        super(BasicBlockSig, self).__init__()
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, ksize, stride, pad),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
 
 class Block(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -65,7 +95,6 @@ class DRLN(nn.Module):
         #scale = args.scale[0]
         #act = nn.ReLU(True)
 
-        self.scale = scale
         chs=n_feats
 
         self.sub_mean = MeanShift(1,rgb_mean=rgb_mean, sign=-1)
@@ -115,7 +144,7 @@ class DRLN(nn.Module):
         self.c19 = BasicBlock(chs*4, chs, 3, 1, 1)
         self.c20 = BasicBlock(chs*5, chs, 3, 1, 1)
 
-        self.upsample = Upsample(chs, self.scale)
+        self.upsample = Upsample(scale, n_feats)
         #self.convert = ops.ConvertBlock(chs, chs, 20)
         self.tail = nn.Conv2d(chs, 3, 3, 1, 1)
                 
@@ -219,9 +248,15 @@ class DRLN(nn.Module):
         
         #b = self.convert(c_out)
         b_out = a6 + x
-        out = self.upsample(b_out, scale=self.scale )
+        out = self.upsample(b_out)
 
         out = self.tail(out)
         f_out = self.add_mean(out)
 
         return f_out
+
+if __name__ == '__main__':
+    import torch
+    model = DRLN(4,64).cuda()
+    t = torch.ones(1,3,256,256).cuda()
+    print(model(t).shape)

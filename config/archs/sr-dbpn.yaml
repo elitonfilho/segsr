@@ -3,5 +3,5 @@ netG:
   num_channels: 3
   base_channels: 18
   feat_channels: 64
-  num_stages: 4
+  num_stages: 7
   scale_factor: 4

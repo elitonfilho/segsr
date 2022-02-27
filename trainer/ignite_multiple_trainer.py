@@ -134,9 +134,10 @@ class IgniteMultipleTrainer(BaseTrainer):
 
         netG : torch.nn.Module = getattr(self, 'netG')
 
-        hr_img = hr_img.float().cuda()
-        lr_img = lr_img.float().cuda()
-        sr_img = netG(lr_img)
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
 
         return sr_img, hr_img
 
@@ -163,9 +164,10 @@ class IgniteMultipleTrainer(BaseTrainer):
 
         netG : torch.nn.Module = getattr(self, 'netG')
 
-        hr_img = hr_img.float().cuda()
-        lr_img = lr_img.float().cuda()
-        sr_img = netG(lr_img)
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
 
         return sr_img, hr_img
 
@@ -192,9 +194,10 @@ class IgniteMultipleTrainer(BaseTrainer):
 
         netG : torch.nn.Module = getattr(self, 'netG')
 
-        hr_img = hr_img.float().cuda()
-        lr_img = lr_img.float().cuda()
-        sr_img = netG(lr_img)
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
 
         return sr_img, hr_img
 
@@ -221,9 +224,10 @@ class IgniteMultipleTrainer(BaseTrainer):
 
         netG : torch.nn.Module = getattr(self, 'netG')
 
-        hr_img = hr_img.float().cuda()
-        lr_img = lr_img.float().cuda()
-        sr_img = netG(lr_img)
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
 
         return sr_img, hr_img
 
@@ -243,9 +247,34 @@ class IgniteMultipleTrainer(BaseTrainer):
         pass
 
     def train_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
+        lr_img, hr_img, _, _ = batch
+
+        lr_img = lr_img.cuda().float()
+        hr_img = hr_img.cuda().float()
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+        fake_img = netG(lr_img)
+
+        loss: torch.Tensor = self.il(fake_img, hr_img)
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
+        loss.backward()
+        
+        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
+        optimizer.step()
+
+        return fake_img, hr_img
+
     def validation_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
+        lr_img, hr_img, _, _ = batch
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
+
+        return sr_img, hr_img
 
     def train_step_srresnet(self, engine: Engine, batch: Iterable[Tensor]):
         # Uses generator / discriminator

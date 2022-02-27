@@ -143,3 +143,8 @@ class NetD(nn.Module):
         out = self.fc2(out)
         out = self.sigmoid(out)
         return out.view(-1, 1).squeeze(1)
+
+if __name__ == '__main__':
+    import torch
+    model = NetG()
+    print(model(torch.ones(1,3,256,256)).shape)

@@ -87,7 +87,7 @@ class ResidualBlockBN(nn.Module):
     """
 
     def __init__(self, num_feat=64, res_scale=1, init_weight=False):
-        super(ResidualBlockNoBN, self).__init__()
+        super(ResidualBlockBN, self).__init__()
         self.res_scale = res_scale
         self.conv1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
         self.bn1 = nn.BatchNorm2d(num_feat)
@@ -152,23 +152,6 @@ class BasicBlock(nn.Sequential):
         res += x
 
         return res
-
-class BasicBlockSig(nn.Module):
-    def __init__(self,
-                 in_channels, out_channels,
-                 ksize=3, stride=1, pad=1):
-        super(BasicBlockSig, self).__init__()
-
-        self.body = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, ksize, stride, pad),
-            nn.Sigmoid()
-        )
-
-        init_weights(self.modules)
-        
-    def forward(self, x):
-        out = self.body(x)
-        return out
 
 def same_padding(images, ksizes, strides, rates):
     assert len(images.size()) == 4

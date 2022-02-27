@@ -419,3 +419,9 @@ class D_DownBlock(torch.nn.Module):
         h0 = self.down_conv2(l0)
         l1 = self.down_conv3(h0 - x)
         return l1 + l0
+
+if __name__ == '__main__':
+    import torch
+    model = DBPN(3,18,64,7,4).cuda()
+    t = torch.ones(1,3,256,256).cuda()
+    print(model(t).shape)

@@ -6,7 +6,7 @@ optimizer:
   lr: 1e-4
 begin_seg: 0.
 num_epochs: 100
-batch_size: 128
+batch_size: 1
 save_path: checkpoints/
 losses:
   il:

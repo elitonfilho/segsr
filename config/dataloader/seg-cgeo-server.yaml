@@ -28,6 +28,7 @@ test:
   path_seg: /mnt/data/eliton/datasets/cgeo/test/seg
 n_classes: 5
 weight_classes: [1.,1.,1.,1.,1.]
+rgb_mean: [0.3151, 0.3444, 0.3060]
 prefetch: 1
 num_workers: 1
 pin_memory: True

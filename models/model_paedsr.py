@@ -137,3 +137,9 @@ class PyramidAttention(nn.Module):
       
         y = torch.cat(y, dim=0)+res*self.res_scale  # back to the mini-batch
         return y
+
+if __name__ == '__main__':
+    import torch
+    model = PAEDSR(4,64).cuda()
+    t = torch.ones(1,3,256,256).cuda()
+    print(model(t).shape)

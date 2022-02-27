@@ -6,4 +6,4 @@ netG:
   num_group: 10
   num_block: 16
   upscale: 4
-  rgb_mean: [0.3151, 0.3444, 0.3060]
+  rgb_mean: ${dataloader.rgb_mean}

@@ -2,4 +2,4 @@ netG:
   _target_: models.model_drln.DRLN
   scale: 4
   n_feats: 64
-  rgb_mean: 
+  rgb_mean: ${dataloader.rgb_mean}

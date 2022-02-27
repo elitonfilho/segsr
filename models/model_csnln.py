@@ -217,3 +217,9 @@ class CrossScaleAttention(nn.Module):
       
         y = torch.cat(y, dim=0)
         return y
+
+if __name__ == '__main__':
+    import torch
+    model = CSNLN(128,12,3,4, [1,1,1], [1,1,1]).cuda()
+    t = torch.ones(1,3,64,64).cuda()
+    print(model(t).shape)

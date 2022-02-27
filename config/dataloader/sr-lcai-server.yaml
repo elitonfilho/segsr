@@ -27,6 +27,7 @@ test:
   path_seg: /mnt/data/eliton/datasets/landcoverai/val_mask
 n_classes: 4
 weight_classes: [1.,1.,1.,1.]
+rgb_mean: [0.4074, 0.4316, 0.3596]
 prefetch: 1
 num_workers: 1
 pin_memory: True
