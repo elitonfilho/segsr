@@ -48,6 +48,7 @@ class IgniteMultipleTrainer(BaseTrainer):
         hr_img = hr_img.cuda().float()
 
         netG : torch.nn.Module = getattr(self, 'netG')
+        netG.zero_grad()
         fake_img = netG(lr_img)
 
         loss: torch.Tensor = self.il(fake_img, hr_img)
