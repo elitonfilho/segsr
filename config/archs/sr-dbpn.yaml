@@ -1,5 +1,5 @@
 netG:
-  _target_: models.model_dpbn.DBPN
+  _target_: models.model_dbpn.DBPN
   num_channels: 3
   base_channels: 18
   feat_channels: 64
