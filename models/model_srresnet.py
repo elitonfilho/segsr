@@ -113,6 +113,16 @@ class NetD(nn.Module):
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),            
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
+
+            # state size. (512) x 16 x 16
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),            
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            # state size. (512) x 16 x 16
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),            
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
         self.LeakyReLU = nn.LeakyReLU(0.2, inplace=True)
@@ -147,4 +157,5 @@ class NetD(nn.Module):
 if __name__ == '__main__':
     import torch
     model = NetG()
+    model = NetD()
     print(model(torch.ones(1,3,256,256)).shape)

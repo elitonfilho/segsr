@@ -72,35 +72,30 @@ class IgniteMultipleTrainer(BaseTrainer):
 
         return sr_img, hr_img
 
-    def train_step_paedsr(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
-    def validation_step_paedsr(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
-
-    def train_step_abpn(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
-    def validation_step_abpn(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
-
-    def train_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
+    def train_step_srresnet(self, engine: Engine, batch: Iterable[Tensor]):
         lr_img, hr_img, _, _ = batch
 
         lr_img = lr_img.cuda().float()
         hr_img = hr_img.cuda().float()
 
         netG : torch.nn.Module = getattr(self, 'netG')
+        optimG: torch.optim.Optimizer = getattr(self, 'optimG')
+        loss_il = getattr(self, 'il')
+        loss_per = getattr(self, 'per')
+        netG.zero_grad()
+
         fake_img = netG(lr_img)
 
-        loss: torch.Tensor = self.il(fake_img, hr_img)
-        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_img=loss.item())
-        loss.backward()
-        
-        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
-        optimizer.step()
+        l_il = loss_il(fake_img, hr_img)
+        l_per = loss_per(fake_img, hr_img)[0]
+        g_loss = l_il + l_per
+
+        g_loss.backward()
+        optimG.step()
 
         return fake_img, hr_img
 
-    def validation_step_drln(self, engine: Engine, batch: Iterable[Tensor]):
+    def validation_step_srresnet(self, engine: Engine, batch: Iterable[Tensor]):
         lr_img, hr_img, _, _ = batch
 
         netG : torch.nn.Module = getattr(self, 'netG')
@@ -111,12 +106,6 @@ class IgniteMultipleTrainer(BaseTrainer):
             sr_img = netG(lr_img)
 
         return sr_img, hr_img
-
-    def train_step_srresnet(self, engine: Engine, batch: Iterable[Tensor]):
-        # Uses generator / discriminator
-        pass
-    def validation_step_srresnet(self, engine: Engine, batch: Iterable[Tensor]):
-        pass
 
     def run_validation(self, engine: Engine, data: Iterable, engineRef: Engine):
         status = engine.run(data)
@@ -167,7 +156,7 @@ class IgniteMultipleTrainer(BaseTrainer):
         writer.add_scalars(tag, results, globalstep)
 
     def get_run_step_fn(self, name: str) -> Tuple[Callable,Callable]:
-        if name in ('edsr', 'rcan', 'rdn', 'dbpn', 'csnln', 'srresnet'):
+        if name in ('edsr', 'rcan', 'rdn', 'dbpn', 'csnln', 'drln', 'abpn', 'paedsr'):
             train_func = self.train_step
             val_func = self.validate_step
         else:
