@@ -2,9 +2,10 @@
 # https://arxiv.org/abs/1906.12021
 # https://github.com/saeed-anwar/DRLN
 
+import math
 import torch
 import torch.nn as nn
-from .utils import ResidualBlockBN, MeanShift, Upsample
+import torch.nn.functional as F
 
 class CALayer(nn.Module):
     def __init__(self, channel, reduction=16):
@@ -25,6 +26,91 @@ class CALayer(nn.Module):
         c_out = torch.cat([c1, c2, c3], dim=1)
         y = self.c4(c_out)
         return x * y
+
+class MeanShift(nn.Module):
+    def __init__(self, mean_rgb, sub):
+        super(MeanShift, self).__init__()
+
+        sign = -1 if sub else 1
+        r = mean_rgb[0] * sign
+        g = mean_rgb[1] * sign
+        b = mean_rgb[2] * sign
+
+        self.shifter = nn.Conv2d(3, 3, 1, 1, 0)
+        self.shifter.weight.data = torch.eye(3).view(3, 3, 1, 1)
+        self.shifter.bias.data   = torch.Tensor([r, g, b])
+
+        # Freeze the mean shift layer
+        for params in self.shifter.parameters():
+            params.requires_grad = False
+
+    def forward(self, x):
+        x = self.shifter(x)
+        return x
+
+class ResidualBlock(nn.Module):
+    def __init__(self, 
+                 in_channels, out_channels):
+        super(ResidualBlock, self).__init__()
+
+        self.body = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, 3, 1, 1),
+        )
+        
+    def forward(self, x):
+        out = self.body(x)
+        out = F.relu(out + x)
+        return out
+
+class UpsampleBlock(nn.Module):
+    def __init__(self, 
+                 n_channels, scale, multi_scale, 
+                 group=1):
+        super(UpsampleBlock, self).__init__()
+
+        if multi_scale:
+            self.up2 = _UpsampleBlock(n_channels, scale=2, group=group)
+            self.up3 = _UpsampleBlock(n_channels, scale=3, group=group)
+            self.up4 = _UpsampleBlock(n_channels, scale=4, group=group)
+        else:
+            self.up =  _UpsampleBlock(n_channels, scale=scale, group=group)
+
+        self.multi_scale = multi_scale
+
+    def forward(self, x, scale):
+        if self.multi_scale:
+            if scale == 2:
+                return self.up2(x)
+            elif scale == 3:
+                return self.up3(x)
+            elif scale == 4:
+                return self.up4(x)
+        else:
+            return self.up(x)
+
+
+class _UpsampleBlock(nn.Module):
+    def __init__(self, 
+				 n_channels, scale, 
+				 group=1):
+        super(_UpsampleBlock, self).__init__()
+
+        modules = []
+        if scale == 2 or scale == 4 or scale == 8:
+            for _ in range(int(math.log(scale, 2))):
+                modules += [nn.Conv2d(n_channels, 4*n_channels, 3, 1, 1, groups=group), nn.ReLU(inplace=True)]
+                modules += [nn.PixelShuffle(2)]
+        elif scale == 3:
+            modules += [nn.Conv2d(n_channels, 9*n_channels, 3, 1, 1, groups=group), nn.ReLU(inplace=True)]
+            modules += [nn.PixelShuffle(3)]
+
+        self.body = nn.Sequential(*modules)
+        
+    def forward(self, x):
+        out = self.body(x)
+        return out
 
 class BasicBlock(nn.Module):
     def __init__(self,
@@ -60,9 +146,9 @@ class Block(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(Block, self).__init__()
 
-        self.r1 = ResidualBlockBN(in_channels, out_channels)
-        self.r2 = ResidualBlockBN(in_channels*2, out_channels*2)
-        self.r3 = ResidualBlockBN(in_channels*4, out_channels*4)
+        self.r1 = ResidualBlock(in_channels, out_channels)
+        self.r2 = ResidualBlock(in_channels*2, out_channels*2)
+        self.r3 = ResidualBlock(in_channels*4, out_channels*4)
         self.g = BasicBlock(in_channels*8, out_channels, 1, 1, 0)
         self.ca = CALayer(in_channels)
 
@@ -96,9 +182,10 @@ class DRLN(nn.Module):
         #act = nn.ReLU(True)
 
         chs=n_feats
+        self.scale = scale
 
-        self.sub_mean = MeanShift(1,rgb_mean=rgb_mean, sign=-1)
-        self.add_mean = MeanShift(1,rgb_mean=rgb_mean, sign=1)
+        self.sub_mean = MeanShift(rgb_mean, sub=True)
+        self.add_mean = MeanShift(rgb_mean, sub=False)
         
         self.head = nn.Conv2d(3, chs, 3, 1, 1)
 
@@ -144,7 +231,7 @@ class DRLN(nn.Module):
         self.c19 = BasicBlock(chs*4, chs, 3, 1, 1)
         self.c20 = BasicBlock(chs*5, chs, 3, 1, 1)
 
-        self.upsample = Upsample(scale, n_feats)
+        self.upsample = UpsampleBlock(n_feats, scale, multi_scale=False)
         #self.convert = ops.ConvertBlock(chs, chs, 20)
         self.tail = nn.Conv2d(chs, 3, 3, 1, 1)
                 
@@ -248,7 +335,7 @@ class DRLN(nn.Module):
         
         #b = self.convert(c_out)
         b_out = a6 + x
-        out = self.upsample(b_out)
+        out = self.upsample(b_out, self.scale)
 
         out = self.tail(out)
         f_out = self.add_mean(out)
@@ -258,5 +345,5 @@ class DRLN(nn.Module):
 if __name__ == '__main__':
     import torch
     model = DRLN(4,64).cuda()
-    t = torch.ones(1,3,256,256).cuda()
+    t = torch.ones(1,3,64,64).cuda()
     print(model(t).shape)
