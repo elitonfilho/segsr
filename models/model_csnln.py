@@ -2,10 +2,22 @@
 # https://arxiv.org/abs/2006.01424
 # https://github.com/SHI-Labs/Cross-Scale-Non-Local-Attention
 
-from .utils import ResidualBlockNoBN, BasicBlock, MeanShift, extract_image_patches, reduce_sum, same_padding
+from .utils import ResidualBlockNoBN, MeanShift, extract_image_patches, reduce_sum, same_padding
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
+
+class BasicBlock(nn.Sequential):
+    def __init__(
+        self, in_channels, out_channels, kernel_size, stride=1, padding=0, bn=False, act=nn.PReLU()):
+
+        m = [nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)]
+        if bn:
+            m.append(nn.BatchNorm2d(out_channels))
+        if act is not None:
+            m.append(act)
+
+        super(BasicBlock, self).__init__(*m)
 
 #projection between attention branches
 class MultisourceProjection(nn.Module):
@@ -46,7 +58,7 @@ class RecurrentProjection(nn.Module):
         if scale != 4:
             self.down_sample_2 = nn.Sequential(*[nn.Conv2d(in_channel,in_channel,stride_conv_ksize,stride=stride,padding=padding),nn.PReLU()])
         self.error_encode = nn.Sequential(*[nn.ConvTranspose2d(in_channel,in_channel,stride_conv_ksize,stride=stride,padding=padding),nn.PReLU()])
-        self.post_conv = BasicBlock(in_channel,in_channel,kernel_size,stride=1,act=nn.PReLU())
+        self.post_conv = BasicBlock(in_channel,in_channel,kernel_size,stride=1, padding=1, act=nn.PReLU())
         if scale == 4:
             self.multi_source_projection_2 = MultisourceProjection(in_channel,kernel_size=kernel_size,scale = scale)
             self.down_sample_3 = nn.Sequential(*[nn.Conv2d(in_channel,in_channel,8,stride=4,padding=2),nn.PReLU()])
@@ -79,8 +91,8 @@ class CSNLN(nn.Module):
         self.sub_mean = MeanShift(1, rgb_mean, rgb_std)
         
         # define head module
-        m_head = [BasicBlock(3, n_feats, kernel_size,stride=1, bn=False,act=nn.PReLU()),
-        BasicBlock(n_feats, n_feats, kernel_size,stride=1,bn=False,act=nn.PReLU())]
+        m_head = [BasicBlock(3, n_feats, kernel_size,stride=1, padding=1, bn=False,act=nn.PReLU()),
+        BasicBlock(n_feats, n_feats, kernel_size,stride=1, padding=1, bn=False,act=nn.PReLU())]
 
         # define Self-Exemplar Mining Cell
         self.SEM = RecurrentProjection(n_feats,scale = scale)
