@@ -12,7 +12,6 @@ from ignite.handlers import Checkpoint
 from ignite.utils import setup_logger
 from torch.functional import Tensor
 from torch.nn import Module
-from torch.profiler import ProfilerActivity, profile, record_function
 from torchvision.utils import make_grid, save_image
 import matplotlib.pyplot as plt
 from .base_tester import BaseTester
@@ -73,7 +72,8 @@ class IgniteTester(BaseTester):
 
     def run_test(self, engine: Engine, batch: List[Tensor]):
         img_lr, img_hr, label_hr, name = batch
-        result = self.netG(img_lr.float().cuda(), label_hr)
+#         result = self.netG(img_lr.float().cuda(), label_hr)
+        result = self.netG(img_lr.float().cuda())
         scaled_lr = torch.nn.functional.interpolate(img_lr, (256,256), mode='bicubic')
         if self.cfg.tester.get('savefig_mode', None) == 'matplotlib':
             self.generate_plot(name, img_hr, result, scaled_lr, label_hr)

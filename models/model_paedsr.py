@@ -22,14 +22,14 @@ class PAEDSR(nn.Module):
         m_body.append(self.msa)
         for _ in range(n_resblock//2):
             m_body.append(ResidualBlockBN(n_feats))
-        m_body.append(nn.Conv2d(n_feats, n_feats, 3))
+        m_body.append(nn.Conv2d(n_feats, n_feats, 3, padding=1))
 
         # define tail module
         m_tail = [
             Upsample(scale, n_feats),
             nn.Conv2d(
                 n_feats, in_ch, kernel_size,
-                padding=(kernel_size//2)
+                padding=5
             )
         ]
 
@@ -141,5 +141,5 @@ class PyramidAttention(nn.Module):
 if __name__ == '__main__':
     import torch
     model = PAEDSR(4,64).cuda()
-    t = torch.ones(1,3,256,256).cuda()
+    t = torch.ones(1,3,64,64).cuda()
     print(model(t).shape)

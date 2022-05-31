@@ -10,6 +10,8 @@ from ignite.engine.engine import Engine
 from ignite.engine.events import Events
 from ignite.handlers import Checkpoint
 from ignite.utils import setup_logger
+from ignite.metrics import ConfusionMatrix
+from hydra.utils import instantiate
 from torch.functional import Tensor
 from torch.nn import Module
 from torchvision.utils import make_grid, save_image
@@ -55,16 +57,29 @@ class IgniteTesterSeg(BaseTester):
     def run_test(self, engine: Engine, batch: List[Tensor]):
         img_hr, label_hr, name = batch
         result = self.netSeg(img_hr.float().cuda())
-        result = torch.argmax(result, 1).cpu()
+        result_argmax = torch.argmax(result, 1).cpu()
         if self.cfg.tester.get('savefig_mode', None) == 'grid':
-            self.generate_grid(name, label_hr, result)      
+            self.generate_grid(name, label_hr, result_argmax)      
         elif self.cfg.tester.get('savefig_mode', None) == 'segonly':
-            self.save_figure(name, result)
+            self.save_figure(name, result_argmax)
+        return result.cuda(), label_hr.cuda().long()
+
+    def setup_metrics(self, engine: Engine):
+        for metric in self.cfg.tester.metrics:
+            if metric in ('iou','miou','dice','jaccard'):
+                cm = ConfusionMatrix(self.cfg.dataloader.n_classes)
+                _instance = instantiate(self.cfg.tester.metrics.get(metric), cm)
+            else:
+                _instance = instantiate(self.cfg.tester.metrics.get(metric))
+            _instance.attach(engine, metric)
     
     def run(self):
         dataloader = idist.auto_dataloader(self.dataset['test'], batch_size=self.cfg.tester.batch_size)
         tester = Engine(self.run_test)
         self.setup_handlers(tester)
+        self.setup_metrics(tester)
         tester.logger = setup_logger('Tester')
         Path(self.cfg.tester.save_path).mkdir(exist_ok=True)
-        tester.run(dataloader)
+        results = tester.run(dataloader)
+        for metric in results.metrics:
+            tester.logger.info(f"{metric}: {results.metrics.get(metric)}")

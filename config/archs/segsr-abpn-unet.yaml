@@ -1,0 +1,7 @@
+netG:
+  _target_: models.model_abpn.ABPN_v3
+  input_dim: 3
+  dim: 32
+netSeg:
+  _target_: models.model_unet.UNet
+  n_class: ${dataloader.n_classes}

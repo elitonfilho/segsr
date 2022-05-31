@@ -1,11 +1,11 @@
 netG:
   _target_: models.model_paedsr.PAEDSR
   in_ch: 3
-  num_feat: 
-  n_resblock: 
-  res_scale: 
+  n_feats: 256
+  n_resblock: 32
+  res_scale: 0.1
   kernel_size: 3
   scale: 4
-  rgb_range: 
+  rgb_range: 1.0
   rgb_mean: ${dataloader.rgb_mean}
-  rgb_std: 
+  rgb_std: [1., 1., 1.]

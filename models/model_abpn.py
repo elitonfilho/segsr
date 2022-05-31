@@ -9,9 +9,9 @@ from torch.nn import functional as F
 class ABPN_v3(nn.Module):
     def __init__(self, input_dim, dim):
         super(ABPN_v3, self).__init__()
-        kernel_size = 10
+        kernel_size = 4
         pad = 1
-        stride = 8
+        stride = 2
 
         self.feat1 = ConvBlock(input_dim, 2 * dim, 3, 1, 1)
         self.SA0 = Space_attention(2 * dim, 2 * dim, 1, 1, 0, 1)
@@ -99,7 +99,7 @@ class ABPN_v3(nn.Module):
         LR_feat = self.LR_conv1(LR_feat)
         LR_feat = self.LR_conv2(LR_feat)
         SR_res = self.SR_conv3(HR_feat + LR_feat)
-        bic_x = F.interpolate(bic_x, scale_factor=8, mode='bicubic')
+        bic_x = F.interpolate(bic_x, scale_factor=2, mode='bicubic')
         
         SR = bic_x + SR_res
 
@@ -788,5 +788,5 @@ class Space_Time_Attention_v2(torch.nn.Module):
 if __name__ == '__main__':
     import torch
     model = ABPN_v3(3, 32).cuda()
-    t = torch.ones(1,3,128,128).cuda()
+    t = torch.ones(1,3,64,64).cuda()
     print(model(t).shape)

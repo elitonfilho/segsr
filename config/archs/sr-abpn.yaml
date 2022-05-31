@@ -1,4 +1,4 @@
 netG:
-  _target_: models.model_abpnn.ABPN_v3
+  _target_: models.model_abpn.ABPN_v3
   input_dim: 3
   dim: 32

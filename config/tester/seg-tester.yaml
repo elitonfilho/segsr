@@ -1,7 +1,17 @@
 _target_: trainer.ignite_tester_seg.IgniteTesterSeg
+_recursive_: False
 batch_size: 1
 upscale_factor: 4
 path_pretrained: '/home/eliton/segsr/outputs/load_test.pt'
 path_image: 'data/LR/2953-3-SO_1_LR.png'
 save_path: '/home/eliton/segsr/outputs/test'
 savefig_mode: null
+metrics:
+  iou:
+    _target_: ignite.metrics.IoU
+  miou:
+    _target_: ignite.metrics.mIoU
+  acc:
+    _target_: ignite.metrics.Accuracy
+  rec:
+    _target_: ignite.metrics.Recall

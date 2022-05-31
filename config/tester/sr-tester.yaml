@@ -1,4 +1,5 @@
 _target_: trainer.ignite_tester.IgniteTester
+_recursive_: False
 batch_size: 1
 upscale_factor: 4
 path_pretrained: C:\Users\eliton\Documents\ml\segsr\zoo\pretrained-segsr.pt

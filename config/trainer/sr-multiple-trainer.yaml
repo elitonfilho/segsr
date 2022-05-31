@@ -5,13 +5,23 @@ optimizer:
   _target_: torch.optim.Adam
   lr: 1e-4
 begin_seg: 0.
-num_epochs: 100
-batch_size: 1
-save_path: checkpoints/
+num_epochs: 50
+batch_size: 128
+path_pretrained_seg: 'zoo/pretrained-unet.pt'
+path_pretrained_sr: 'zoo/pretrained-sr.pt'
+save_path: 'checkpoints/'
 losses:
   il:
     _target_: losses.L1Loss
     loss_weight: 1.0
+  seg:
+    _target_: losses.SegLoss
+    loss_weight: 1.0
+    weight_classes: ${dataloader.weight_classes}
+#   per:
+#     _target_: losses.PerceptualLoss
+#     layer_weights: {'conv5_4': 1}
+#     perceptual_weight: 0.001
 validation:
   batch_size: 128
   save_best: 'psnr'
@@ -33,3 +43,12 @@ metrics:
     ssim:
       _target_: utils.customMetrics.CustomSSIM #ignite.metrics.SSIM
       data_range: 1.0
+  val_seg:
+    iou:
+      _target_: ignite.metrics.IoU
+    miou:
+      _target_: ignite.metrics.mIoU
+    acc:
+      _target_: ignite.metrics.Accuracy
+    rec:
+      _target_: ignite.metrics.Recall

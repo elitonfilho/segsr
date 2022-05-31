@@ -30,6 +30,9 @@ class IgniteMultipleTrainer(BaseTrainer):
         for model_name, model in self.models.items():
             model = idist.auto_model(model).train()
             setattr(self, model_name, model)
+            if model_name == 'netSeg':
+                self.netSeg.eval()
+                self.netSeg.requires_grad_(False)
 
         # Adapt optimizer for distributed scenario
         for model_name, optim in self.optimizers.items():
@@ -61,6 +64,54 @@ class IgniteMultipleTrainer(BaseTrainer):
         return fake_img, hr_img
 
     def validate_step(self, engine: Engine, batch: Iterable):
+        lr_img, hr_img, _, _ = batch
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+
+        with torch.no_grad():
+            hr_img = hr_img.float().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
+
+        return sr_img, hr_img
+
+    def validate_step_seg(self, engine: Engine, batch: Iterable):
+        lr_img, _, label_img, _ = batch
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+        netSeg: torch.nn.Module = getattr(self, 'netSeg')
+
+        with torch.no_grad():
+            label_img = label_img.long().cuda()
+            lr_img = lr_img.float().cuda()
+            sr_img = netG(lr_img)
+            seg_img = netSeg(sr_img)
+
+        return seg_img, label_img
+    
+    def train_step_abpnseg(self, engine: Engine, batch: List[Tensor]):
+        lr_img, hr_img, label_hr, _ = batch
+
+        lr_img = lr_img.cuda().float()
+        hr_img = hr_img.cuda().float()
+
+        netG : torch.nn.Module = getattr(self, 'netG')
+        netSeg : torch.nn.Module = getattr(self, 'netSeg')
+        netG.zero_grad()
+        fake_img = netG(lr_img)
+        label_seg = netSeg(fake_img)
+        loss_il: torch.Tensor = self.il(fake_img, hr_img)
+        loss_seg: torch.Tensor = self.seg(label_seg, label_hr.long().cuda())
+        loss = loss_il + loss_seg
+        self.call_summary(self.writer, 'train/losses', engine.state.epoch, l_il=loss_il.item(), l_seg=loss_seg.item())
+        loss.backward()
+        
+        optimizer : torch.optim.Optimizer = getattr(self, 'optimG')
+        optimizer.step()
+
+        return fake_img, hr_img
+    
+    def validation_step_abpnseg(self, engine: Engine, batch: Iterable):
         lr_img, hr_img, _, _ = batch
 
         netG : torch.nn.Module = getattr(self, 'netG')
@@ -120,6 +171,16 @@ class IgniteMultipleTrainer(BaseTrainer):
             for metric in self.cfg.trainer.metrics.val:
                 _instance = instantiate(self.cfg.trainer.metrics.val.get(metric))
                 _instance.attach(engine, metric)
+        elif type == 'val_seg':
+            n_classes = self.cfg.dataloader.n_classes
+            for metric in self.cfg.trainer.metrics.val_seg:
+                if metric in ('iou','miou','dice','jaccard'):
+                    cm = ignite.metrics.ConfusionMatrix(n_classes)
+                    _instance = instantiate(self.cfg.trainer.metrics.val_seg.get(metric), cm)
+                else:
+                    _instance = instantiate(self.cfg.trainer.metrics.val_seg.get(metric))
+                _instance.attach(engine, metric)
+
 
     def setup_save_state(self, engine: Engine, engineRef: Engine):
         save_dict = dict()
@@ -152,8 +213,20 @@ class IgniteMultipleTrainer(BaseTrainer):
     @staticmethod
     @one_rank_only()
     def call_summary(writer: SummaryWriter, tag: str, globalstep: int, /, **tensors):
-        results = {x:y for x,y in tensors.items()}
-        writer.add_scalars(tag, results, globalstep)
+        scalars = {}
+        for x, y in tensors.items():
+            if isinstance(y, torch.Tensor):
+                text = f'{x}: {"".join(str(z.item()) for z in y.ravel())}'
+                writer.add_text(tag, text, globalstep)
+            elif isinstance(y, dict):
+                for ykey, yvalue in y.items():
+                    text = f'{x}_{ykey}: {yvalue}'
+                    writer.add_text(tag, text, globalstep)
+            elif isinstance(y, str):
+                writer.add_text(tag, f'{x}: {text}', globalstep)
+            else:
+                scalars.update({x:y})
+        writer.add_scalars(tag, scalars, globalstep)
 
     def get_run_step_fn(self, name: str) -> Tuple[Callable,Callable]:
         if name in ('edsr', 'rcan', 'rdn', 'dbpn', 'csnln', 'drln', 'abpn', 'paedsr'):
@@ -175,16 +248,23 @@ class IgniteMultipleTrainer(BaseTrainer):
         trainer.logger = setup_logger('trainer')
         validator = Engine(validate_step)
         validator.logger = setup_logger('validator')
+        validator_seg = Engine(self.validate_step_seg)
+        validator_seg.logger = setup_logger('validator_seg')
 
         self.setup_metrics(trainer, 'train')
         self.setup_metrics(validator, 'val')
+        self.setup_metrics(validator_seg, 'val_seg')
         trainer.add_event_handler(
             Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
             self.run_validation, validator, val_loader, trainer)
+        trainer.add_event_handler(
+            Events.EPOCH_COMPLETED(every=self.cfg.trainer.validation.freq) | Events.COMPLETED,
+            self.run_validation, validator_seg, val_loader, trainer)
 #         trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
         self.setup_save_state(validator, trainer)
         self.setup_pbar(trainer)
         self.setup_pbar(validator)
+        self.setup_pbar(validator_seg)
         self.setup_schedulers(trainer)
         self.writer = SummaryWriter('tensorboard')
         trainer.run(train_loader, max_epochs=self.cfg.trainer.num_epochs)
