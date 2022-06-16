@@ -25,5 +25,3 @@ python3 main.py mode=test tester=sr-tester archs=sr-sagan tester.path_pretrained
 [0.3151, 0.3444, 0.3060]
 # LCAI MEAN
 [0.4074, 0.4316, 0.3596]
-
- python C:\\Users\\eliton\\Documents\\code\\IQA-PyTorch\\inference_iqa.py -n pi -i "D:\\_ml\\lcai-new\\unet-2" -r "D:\\_ml\\lcai\\hr" --save_file "D:\\_ml\\lcai-new\\pi-unet-2.txt"
